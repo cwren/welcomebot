@@ -12,6 +12,9 @@ group_members = {}
 class CNCCommand(Command):
     async def handle(self, context: Context) -> None:
         print("processing cnc message")
+        if context.message.group != cnc:  # guard against DMs
+            print("ignoring DM message")
+            return
         if context.message.type == MessageType.DATA_MESSAGE:
             reply = ""
             if context.message.source_uuid == manager:
@@ -32,16 +35,25 @@ class CNCCommand(Command):
 
 class SocialCommand(Command):
     async def handle(self, context: Context) -> None:
+        reply = ""
         if context.message.group == cnc:
             print("ignoring cnc message")
             return
-        print(context.message.type)
+        if context.message.group == None:
+            print("DM message")
+            if context.message.source_uuid == manager:
+                reply += "hello manager, this is not CNC\n"
+            else:
+                reply += "I am not allowed to talk to strangers"
+            await context.send(reply)
+            return
         if context.message.type == MessageType.DATA_MESSAGE:
             reply = ""
             if context.message.source_uuid == manager:
                 reply += "hello manager\n"
             reply += f'I heard {context.message.text}'
             await context.send(reply)
+            return
         if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
             group = self.bot._groups_by_internal_id[context.message.group]
             reply = f'saw a group update for {group["name"]}\n'
@@ -51,13 +63,15 @@ class SocialCommand(Command):
                         reply += f'welcome: {member}\n'
             group_members[context.message.group] = group["members"]
             await context.send(reply)
+            return
 
 def main():
     bot = SignalBot(
         Config(
             signal_service=os.environ["SIGNAL_SERVICE"],
             phone_number=os.environ["PHONE_NUMBER"],
-            storage=SQLiteConfig(sqlite_db='state.sql',
+            storage=SQLiteConfig(
+                sqlite_db='state.sql',
             )
         )
     )
