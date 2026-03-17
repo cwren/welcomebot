@@ -2,5 +2,5 @@
 .env
 .vscode
 
-state.sql
-signalbot_internal_state.sql
+group_members.db
+signalbot_internal_state.db
