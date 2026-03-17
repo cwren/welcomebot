@@ -9,15 +9,37 @@ cnc = ""
 manager = ""
 group_members = {}
 
-class PingCommand(Command):
+class CNCCommand(Command):
     async def handle(self, context: Context) -> None:
-        print(context.message.type)
+        print("processing cnc message")
         if context.message.type == MessageType.DATA_MESSAGE:
             reply = ""
             if context.message.source_uuid == manager:
                 reply += "hello manager\n"
             if context.message.group == cnc:
                 reply += "we are in the cnc channel\n"
+            reply += f'I heard {context.message.text}'
+            await context.send(reply)
+        if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
+            group = self.bot._groups_by_internal_id[context.message.group]
+            reply = f'saw a group update for {group["name"]}\n'
+            if context.message.group in group_members:
+                for member in group["members"]:
+                    if member not in group_members[context.message.group]:
+                        reply += f'welcome: {member}\n'
+            group_members[context.message.group] = group["members"]
+            await context.send(reply)
+
+class SocialCommand(Command):
+    async def handle(self, context: Context) -> None:
+        if context.message.group == cnc:
+            print("ignoring cnc message")
+            return
+        print(context.message.type)
+        if context.message.type == MessageType.DATA_MESSAGE:
+            reply = ""
+            if context.message.source_uuid == manager:
+                reply += "hello manager\n"
             reply += f'I heard {context.message.text}'
             await context.send(reply)
         if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
@@ -39,7 +61,8 @@ def main():
             )
         )
     )
-    bot.register(PingCommand()) # Run the command for all contacts and groups
+    bot.register(CNCCommand(), groups=[cnc]) # Run the command for all contacts and groups
+    bot.register(SocialCommand()) # Run the command for all contacts and groups
     bot.start()
 
 if __name__ == "__main__":
