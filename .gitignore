@@ -1,5 +1,6 @@
 *~
 .env
+.vscode
 
 state.sql
-.vscode
+signalbot_internal_state.sql
