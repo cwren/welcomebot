@@ -4,3 +4,5 @@
 
 group_members.db
 signalbot_internal_state.db
+__pycache__
+notes.txt
