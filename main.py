@@ -1,26 +1,29 @@
 import logging
 import os
 from dotenv import load_dotenv
-from signalbot import SignalBot, Config, Command, Context, triggered, enable_console_logging
+from pysignalclirestapi import SignalCliRestApi
 
 done = False
 
-class PingCommand(Command):
-    @triggered("Ping")
-    async def handle(self, context: Context) -> None:
-        await context.send("Pong")
 
 def main():
-    bot = SignalBot(
-        Config(
-            signal_service=os.environ["SIGNAL_SERVICE"],
-            phone_number=os.environ["PHONE_NUMBER"],
-        )
-    )
-    bot.register(PingCommand()) # Run the command for all contacts and groups
-    bot.start()
+    signal = SignalCliRestApi(
+        'http://' + os.getenv("SIGNAL_SERVICE"),
+        os.getenv("PHONE_NUMBER"))
+    while(not done):
+        myMessages = signal.receive(send_read_receipts=True)
+        for message in myMessages:
+            if 'dataMessage' in message['envelope']:
+                address = message['envelope']['sourceUuid']
+                name = message['envelope']['sourceName']
+                body = message['envelope']['dataMessage']['message']
+                print('from %s received %s' % (name, body))
+                signal.send_message(
+                    message=f'I heard {body}',
+                    recipients=address)
 
+
+            
 if __name__ == "__main__":
-    enable_console_logging(logging.INFO)
     load_dotenv()
     main()
