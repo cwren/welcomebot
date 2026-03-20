@@ -1,7 +1,6 @@
 import logging
 from types import SimpleNamespace
 import pytest
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from signalbot import MessageType
@@ -17,8 +16,12 @@ CHAT_1_NAME = "chat1"
 CHAT_2_NAME = "chat2"
 GROUPS = [CHAT_1, CHAT_2]
 CNC_ID = CHAT_1
+MOTD = """This is a 
+multiline "message"
+with some emoji:  👋👋"""
 
 logger = logging.getLogger("welcomebot")
+
 
 @pytest.fixture
 def context():
@@ -27,12 +30,18 @@ def context():
     context.send = AsyncMock(return_value=3)
     return context
 
+
 @pytest.fixture
 def cnc():
     fake_groups = SimpleNamespace()
-    fake_groups.list = MagicMock(return_value=GROUPS)
+    fake_groups.list_groups = MagicMock(return_value=GROUPS)
+    fake_groups.put_motd = MagicMock()
 
     fake_bot = SimpleNamespace()
+    fake_bot._groups_by_name = {
+        CHAT_1_NAME: [ { 'name' : CHAT_1_NAME, 'internal_id' : CHAT_1} ],
+        CHAT_2_NAME: [ { 'name' : CHAT_2_NAME, 'internal_id' : CHAT_2} ],
+    }
     fake_bot._groups_by_internal_id = {
         CHAT_1: { 'name' : CHAT_1_NAME} ,
         CHAT_2: { 'name' : CHAT_2_NAME} ,
@@ -46,7 +55,7 @@ def cnc():
     return cnc
 
 
-async def test_hello_1(cnc, context):
+async def test_hello_1(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
@@ -57,7 +66,8 @@ async def test_hello_1(cnc, context):
     assert len(context.send.call_args.args) == 1
     assert "help" in context.send.call_args.args[0]
 
-async def test_hello_2(cnc, context):
+
+async def test_hello_2(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_2
@@ -69,7 +79,7 @@ async def test_hello_2(cnc, context):
     assert "help" in context.send.call_args.args[0]
 
 
-async def test_reject_dm(cnc, context):
+async def test_reject_dm(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER
@@ -79,7 +89,8 @@ async def test_reject_dm(cnc, context):
     assert len(context.send.call_args.args) == 1
     assert "CNC channel" in context.send.call_args.args[0]
 
-async def test_reject_user(cnc, context):
+
+async def test_reject_user(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = USER
@@ -89,13 +100,48 @@ async def test_reject_user(cnc, context):
     assert len(context.send.call_args.args) == 1
     assert "from a manager" in context.send.call_args.args[0]
 
-async def test_help(cnc, context):
+
+async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = "List"
+    context.message.text = "List_groups"
 
     await cnc.handle(context)
+
+    assert cnc.bs.list_groups.called
+
     assert len(context.send.call_args.args) == 1
     assert CHAT_1_NAME in context.send.call_args.args[0]
     assert CHAT_2_NAME in context.send.call_args.args[0]
+
+
+async def test_clear_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd {CHAT_2_NAME}'
+
+    await cnc.handle(context)
+    
+    cnc.bs.put_motd.assert_called_once_with(CHAT_2, '')
+
+    assert len(context.send.call_args.args) == 1
+    assert 'cleared' in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+
+
+async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd {CHAT_2_NAME}\n{MOTD}'
+
+    await cnc.handle(context)
+    
+    cnc.bs.put_motd.assert_called_once_with(CHAT_2, MOTD)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'set' in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+    

@@ -5,8 +5,8 @@ import re
 from signalbot import SignalBot, Config, SQLiteConfig, enable_console_logging
 
 import cnc
-import groups
 import motd
+import store
 
 logger = logging.getLogger("welcomebot")
 
@@ -23,10 +23,10 @@ def main():
 
     cnc_id = os.environ["WELCOME_CNC"]
     managers = re.split(r'[\s|,:]+', os.environ["WELCOME_MANAGER"])
-    gm = groups.GroupStore(logger)
 
-    bot.register(cnc.CNCCommand(logger, managers, cnc_id, gm), groups=[cnc_id]) # monitor other groups
-    bot.register(motd.MotDCommand(logger, cnc_id, gm)) # monitor other groups
+    bot_store = store.BotStore(logger)
+    bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store), groups=[cnc_id]) # monitor other groups
+    bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups
     bot.start()
     logger.info("bot started")
 
