@@ -13,6 +13,10 @@ docker container rm  signal-api
   - WELCOME_MANAGER The signal ID of the manager
   - WELCOME_CNC The command and control group chat ID
 
+uv sync
+uv run pytest
+uv run src/welcombot/main.py
+
 if migrating an existing bot:
  - signalbot_internal_state.db
  - bot_memory.db
