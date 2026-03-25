@@ -10,8 +10,10 @@ USER = "user 1"
 MANAGER_1 = "user 2"
 MANAGER_2 = "user 3"
 MANAGERS = [MANAGER_1, MANAGER_2]
-CHAT_1 = "thisischat1"
-CHAT_2 = "thisischat2"
+CHAT_1 = "aabbfgfg_chat1"
+CHAT_2 = "aabbfggf_chat2"
+CHAT_1_TAG = "aabbfgf" # sorts to group 1
+CHAT_2_TAG = "aabbfgg" # sorts to group 2
 CHAT_1_NAME = "chat1"
 CHAT_2_NAME = "chat2"
 GROUPS = [CHAT_1, CHAT_2]
@@ -36,6 +38,7 @@ def cnc():
     fake_groups = SimpleNamespace()
     fake_groups.list_groups = MagicMock(return_value=GROUPS)
     fake_groups.put_motd = MagicMock()
+    fake_groups.get_motd = MagicMock()
 
     fake_bot = SimpleNamespace()
     fake_bot._groups_by_name = {
@@ -43,8 +46,8 @@ def cnc():
         CHAT_2_NAME: [ { 'name' : CHAT_2_NAME, 'internal_id' : CHAT_2} ],
     }
     fake_bot._groups_by_internal_id = {
-        CHAT_1: { 'name' : CHAT_1_NAME} ,
-        CHAT_2: { 'name' : CHAT_2_NAME} ,
+        CHAT_1: { 'name' : CHAT_1_NAME, 'internal_id' : CHAT_1},
+        CHAT_2: { 'name' : CHAT_2_NAME, 'internal_id' : CHAT_2},
     }
     cnc = CNCCommand(
         logger,
@@ -120,11 +123,11 @@ async def test_clear_motd(cnc: CNCCommand[logging.Logger, list[str], str, Simple
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_motd {CHAT_2_NAME}'
+    context.message.text = f'set_motd 1'
 
     await cnc.handle(context)
     
-    cnc.bs.put_motd.assert_called_once_with(CHAT_2, '')
+    cnc.bs.put_motd.assert_called_once_with(CHAT_2, None)
 
     assert len(context.send.call_args.args) == 1
     assert 'cleared' in context.send.call_args.args[0]
@@ -135,7 +138,7 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_motd {CHAT_2_NAME}\n{MOTD}'
+    context.message.text = f'set_motd 1\n{MOTD}'
 
     await cnc.handle(context)
     
@@ -144,4 +147,72 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     assert len(context.send.call_args.args) == 1
     assert 'set' in context.send.call_args.args[0]
     assert CHAT_2_NAME in context.send.call_args.args[0]
+
+
+async def test_set_motd_out_of_range(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd 10\n{MOTD}'
+
+    await cnc.handle(context)
+    
+    cnc.bs.put_motd.assert_not_called()
+
+    assert len(context.send.call_args.args) == 1
+    assert 'range' in context.send.call_args.args[0]
+
+
+async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd badnum\n{MOTD}'
+
+    await cnc.handle(context)
+    
+    cnc.bs.put_motd.assert_not_called()
+
+    assert len(context.send.call_args.args) == 1
+    assert 'invalid' in context.send.call_args.args[0]
+    
+
+
+async def test_get_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd 1'
+
+    await cnc.handle(context)
+    
+    cnc.bs.get_motd.assert_called_once_with(CHAT_2)
+
+
+async def test_get_motd_out_of_range(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd 10'
+
+    await cnc.handle(context)
+    
+    cnc.bs.get_motd.assert_not_called()
+
+    assert len(context.send.call_args.args) == 1
+    assert 'range' in context.send.call_args.args[0]
+
+
+async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd badnum'
+
+    await cnc.handle(context)
+    
+    cnc.bs.get_motd.assert_not_called()
+
+    assert len(context.send.call_args.args) == 1
+    assert 'invalid' in context.send.call_args.args[0]
     
