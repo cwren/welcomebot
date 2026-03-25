@@ -1,7 +1,7 @@
 # json-rpc mode for the signalbot library
 
-sudo docker run -d  --name signal-api --restart=always -p 9922:8080  \
-     -v signal-state:/home/.local/share/signal-cli \
+sudo docker run -d  --name signal-api --restart=always -p 9922:8080 \
+     -v signal-state:/home/.local \
      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 
 docker container stop  signal-api

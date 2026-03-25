@@ -17,8 +17,9 @@
             "name": "MOTD Bot",
             "type": "debugpy",
             "request": "launch",
-            "program": "src/welcomebot/main.py",
+            "program": "welcomebot/__main__.py",
             "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/src",
             "justMyCode": false,
         }
     ]

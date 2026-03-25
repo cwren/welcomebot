@@ -4,13 +4,13 @@ import os
 import re
 from signalbot import SignalBot, Config, SQLiteConfig, enable_console_logging
 
-import cnc
-import motd
-import store
+from . import cnc
+from . import motd
+from . import store
 
 logger = logging.getLogger("welcomebot")
 
-def main():
+def loop():
     bot = SignalBot(
         Config(
             signal_service=os.environ["SIGNAL_SERVICE"],
@@ -30,7 +30,8 @@ def main():
     bot.start()
     logger.info("bot started")
 
-if __name__ == "__main__":
+
+def main():
     # signalbot logs
     enable_console_logging(logging.WARNING)
 
@@ -45,4 +46,8 @@ if __name__ == "__main__":
 
     load_dotenv()
 
+    loop()
+
+
+if __name__ == "__main__":
     main()
