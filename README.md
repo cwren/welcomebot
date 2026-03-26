@@ -20,7 +20,8 @@ docker container rm signal-api
 if migrating an existing bot, copy:
  - signalbot_internal_state.db
  - bot_memory.db
- 
+
+
 # native mode for the pysignalclirestapi library
 
 sudo docker run -d  --name signal-api --restart=always -p 9922:8080  \
