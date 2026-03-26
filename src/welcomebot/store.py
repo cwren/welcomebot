@@ -3,6 +3,7 @@ import sqlite3
 class BotStore():
     def __init__(self, logger, db="bot_memory.db"):
         self.logger = logger
+        self.logger.info(f'store connecting to {db}')
         self.con = sqlite3.connect(db)
         cur = self.con.cursor()
         cur.execute("""   
