@@ -6,20 +6,11 @@
     "configurations": [
     
         {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-        },
-        {
             "name": "MOTD Bot",
             "type": "debugpy",
             "request": "launch",
-            "program": "welcomebot/__main__.py",
+            "module": "welcomebot",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/src",
             "justMyCode": false,
         }
     ]

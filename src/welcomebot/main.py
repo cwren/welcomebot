@@ -11,6 +11,7 @@ from . import store
 logger = logging.getLogger("welcomebot")
 
 def loop():
+    logger.info("main init")
     bot = SignalBot(
         Config(
             signal_service=os.environ["SIGNAL_SERVICE"],
@@ -27,8 +28,8 @@ def loop():
     bot_store = store.BotStore(logger)
     bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store), groups=[cnc_id]) # monitor other groups
     bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups
-    bot.start()
     logger.info("bot started")
+    bot.start()
 
 
 def main():

@@ -1,8 +1,15 @@
 [project]
 name = "welcomebot"
-version = "0.1.1"
-description = "Add your description here"
+version = "0.1.3"
+authors = [
+  {name = "Chris Wren", email = "chris+github@drwren.com"},
+]
+maintainers = [
+  {name = "Chris Wren", email = "chris+github@drwren.com"},
+]
+description = "monitor signal chat groups and post a message when people join"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.14"
 dependencies = [
     "dotenv>=0.9.9",
@@ -19,5 +26,7 @@ dev = [
 welcomebot = "welcomebot:main"
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
 asyncio_mode = "auto"
+
+[tool.uv]
+package = true

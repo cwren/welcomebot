@@ -4,9 +4,6 @@ sudo docker run -d  --name signal-api --restart=always -p 9922:8080 \
      -v signal-state:/home/.local \
      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 
-docker container stop  signal-api
-docker container rm  signal-api   
-
 - create .env with
   - SIGNAL_SERVICE=localhost:9922
   - PHONE_NUMBER The number of the signal account
@@ -15,9 +12,12 @@ docker container rm  signal-api
 
 uv sync
 uv run pytest
-uv run src/welcombot/main.py
+uv run python -m welcomebot
 
-if migrating an existing bot:
+docker container stop signal-api
+docker container rm signal-api   
+
+if migrating an existing bot, copy:
  - signalbot_internal_state.db
  - bot_memory.db
  
