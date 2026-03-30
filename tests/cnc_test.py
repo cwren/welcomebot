@@ -10,14 +10,26 @@ USER = "user 1"
 MANAGER_1 = "user 2"
 MANAGER_2 = "user 3"
 MANAGERS = [MANAGER_1, MANAGER_2]
-CHAT_1 = "aabbfgfg_chat1"
-CHAT_2 = "aabbfggf_chat2"
-CHAT_1_TAG = "aabbfgf" # sorts to group 1
-CHAT_2_TAG = "aabbfgg" # sorts to group 2
+
 CHAT_1_NAME = "chat1"
+CHAT_1_ID = "aabbfgfg_chat1"
+CHAT_1_TAG = "aabbfgf" # sorts to group 1
+GROUP_1 = {
+    'name' : CHAT_1_NAME,
+    'internal_id' : CHAT_1_ID,
+}
 CHAT_2_NAME = "chat2"
-GROUPS = [CHAT_1, CHAT_2]
-CNC_ID = CHAT_1
+CHAT_2_ID = "aabbfggf_chat2"
+CHAT_2_TAG = "aabbfgg" # sorts to group 2
+GROUP_2 = {
+    'name' : CHAT_2_NAME,
+    'internal_id' : CHAT_2_ID,
+}
+GROUPS = [GROUP_1, GROUP_2]
+GROUP_IDS = [ CHAT_1_ID, CHAT_2_ID ]
+
+CNC_ID = CHAT_1_ID
+
 MOTD = """This is a 
 multiline "message"
 with some emoji:  👋👋"""
@@ -41,14 +53,9 @@ def cnc():
     fake_groups.get_motd = MagicMock()
 
     fake_bot = SimpleNamespace()
-    fake_bot._groups_by_name = {
-        CHAT_1_NAME: [ { 'name' : CHAT_1_NAME, 'internal_id' : CHAT_1} ],
-        CHAT_2_NAME: [ { 'name' : CHAT_2_NAME, 'internal_id' : CHAT_2} ],
-    }
-    fake_bot._groups_by_internal_id = {
-        CHAT_1: { 'name' : CHAT_1_NAME, 'internal_id' : CHAT_1},
-        CHAT_2: { 'name' : CHAT_2_NAME, 'internal_id' : CHAT_2},
-    }
+    fake_bot.get_group = MagicMock(side_effect=GROUPS)
+    fake_bot.groups = GROUPS
+
     cnc = CNCCommand(
         logger,
         MANAGERS,
@@ -112,8 +119,6 @@ async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamesp
 
     await cnc.handle(context)
 
-    assert cnc.bs.list_groups.called
-
     assert len(context.send.call_args.args) == 1
     assert CHAT_1_NAME in context.send.call_args.args[0]
     assert CHAT_2_NAME in context.send.call_args.args[0]
@@ -127,7 +132,7 @@ async def test_clear_motd(cnc: CNCCommand[logging.Logger, list[str], str, Simple
 
     await cnc.handle(context)
     
-    cnc.bs.put_motd.assert_called_once_with(CHAT_2, None)
+    cnc.store.put_motd.assert_called_once_with(CHAT_2_ID, None)
 
     assert len(context.send.call_args.args) == 1
     assert 'cleared' in context.send.call_args.args[0]
@@ -142,7 +147,7 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
 
     await cnc.handle(context)
     
-    cnc.bs.put_motd.assert_called_once_with(CHAT_2, MOTD)
+    cnc.store.put_motd.assert_called_once_with(CHAT_2_ID, MOTD)
 
     assert len(context.send.call_args.args) == 1
     assert 'set' in context.send.call_args.args[0]
@@ -157,7 +162,7 @@ async def test_set_motd_out_of_range(cnc: CNCCommand[logging.Logger, list[str], 
 
     await cnc.handle(context)
     
-    cnc.bs.put_motd.assert_not_called()
+    cnc.store.put_motd.assert_not_called()
 
     assert len(context.send.call_args.args) == 1
     assert 'range' in context.send.call_args.args[0]
@@ -171,7 +176,7 @@ async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, Simp
 
     await cnc.handle(context)
     
-    cnc.bs.put_motd.assert_not_called()
+    cnc.store.put_motd.assert_not_called()
 
     assert len(context.send.call_args.args) == 1
     assert 'invalid' in context.send.call_args.args[0]
@@ -186,7 +191,7 @@ async def test_get_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
 
     await cnc.handle(context)
     
-    cnc.bs.get_motd.assert_called_once_with(CHAT_2)
+    cnc.store.get_motd.assert_called_once_with(CHAT_2_ID)
 
 
 async def test_get_motd_out_of_range(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -197,7 +202,7 @@ async def test_get_motd_out_of_range(cnc: CNCCommand[logging.Logger, list[str], 
 
     await cnc.handle(context)
     
-    cnc.bs.get_motd.assert_not_called()
+    cnc.store.get_motd.assert_not_called()
 
     assert len(context.send.call_args.args) == 1
     assert 'range' in context.send.call_args.args[0]
@@ -211,7 +216,7 @@ async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, Simp
 
     await cnc.handle(context)
     
-    cnc.bs.get_motd.assert_not_called()
+    cnc.store.get_motd.assert_not_called()
 
     assert len(context.send.call_args.args) == 1
     assert 'invalid' in context.send.call_args.args[0]

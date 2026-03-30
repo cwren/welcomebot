@@ -1,10 +1,10 @@
 from signalbot import Command, Context, MessageType
 
 class MotDCommand(Command):
-    def __init__(self, logger, cnc, bs):
+    def __init__(self, logger, cnc, store):
         self.logger = logger
         self.cnc = cnc
-        self.bs = bs
+        self.store = store
 
     async def handle(self, context: Context) -> None:
         if context.message.group == self.cnc:
@@ -26,8 +26,8 @@ class MotDCommand(Command):
 
         if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
             self.logger.info("social processing group update")
-            post_group = self.bot._groups_by_internal_id[context.message.group]
-            prev_members = self.bs.get_members(context.message.group)
+            post_group = self.bot.get_group(context.message.group)
+            prev_members = self.store.get_members(context.message.group)
             new_member = False
             if prev_members:
                 for member in post_group["members"]:
@@ -44,11 +44,12 @@ class MotDCommand(Command):
                 # TODO post TOC
 
             # update member cache
-            self.bs.put_members(context.message.group, post_group["members"])
-            self.bs.retain_only(list(self.bot._groups_by_internal_id.keys()))
+            self.store.put_members(context.message.group, post_group["members"])
+            valid_group_ids = [ g["internal_id"] for g in self.bot.groups ]
+            self.store.retain_only(valid_group_ids)
 
             if new_member:
-                motd = self.bs.get_motd(context.message.group)
+                motd = self.store.get_motd(context.message.group)
                 # TODO don't send too frequently
                 if motd:
                     self.logger.info("sent the message of the day")

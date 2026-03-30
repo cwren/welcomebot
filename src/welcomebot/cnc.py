@@ -8,18 +8,14 @@ HELP_MESSAGE = """you can use these commands:
 
 
 class CNCCommand(Command):
-    def __init__(self, logger, managers, cnc, bs):
+    def __init__(self, logger, managers, cnc, store):
         self.logger = logger
         self.managers = managers
         self.cnc = cnc
-        self.bs = bs
+        self.store = store
 
     def _get_group_info(self):
-        my_group_ids = self.bs.list_groups()
-        known_groups = self.bot._groups_by_internal_id
-        group_ids = [ group_id for group_id in known_groups.keys() if group_id in my_group_ids]
-        groups = [ known_groups[group_id] for group_id in group_ids ]
-        group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in groups ]
+        group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in self.bot.groups ]
         group_info = sorted(group_info, key=lambda x: x['name'])
         for i, info in enumerate(group_info):
             info['tag'] = i
@@ -77,7 +73,7 @@ class CNCCommand(Command):
                         return
 
                     group = group_info[group_tag]
-                    self.bs.put_motd(group['internal_id'], motd)
+                    self.store.put_motd(group['internal_id'], motd)
                     if motd:
                         reply = f'motd set for group {group_tag} ({group['name']})'
                     else:
@@ -109,7 +105,7 @@ class CNCCommand(Command):
                         return
                     
                     group = group_info[group_tag]
-                    motd = self.bs.get_motd(group['internal_id'])
+                    motd = self.store.get_motd(group['internal_id'])
                     if motd:
                         reply = f'motd for group {group_tag} ({group['name']}) is: \n{motd}'
                     else:

@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 from types import SimpleNamespace
 import pytest
@@ -8,13 +9,34 @@ from welcomebot import MotDCommand
 
 USER_1 = "user1"
 USER_2 = "user2"
-CNC_CHAT = "cncchatID"
-SOCIAL_CHAT = "socialchatID"
-NEW_CHAT = "newchatID"
-CNC_CHAT_NAME = "cncchat"
+
 SOCIAL_CHAT_NAME = "socialchat"
-GROUPS = [CNC_CHAT, SOCIAL_CHAT]
 SOCIAL_CHAT_MEMBERS = [ USER_1 ]
+SOCIAL_CHAT_ID = "socialchatID"
+SOCIAL_GROUP = {
+    'name' : SOCIAL_CHAT_NAME,
+    'members' : SOCIAL_CHAT_MEMBERS,
+    'internal_id' : SOCIAL_CHAT_ID,
+}
+CNC_CHAT_NAME = "cncchat"
+CNC_CHAT_MEMBERS = [ USER_1 ]
+CNC_CHAT_ID = "cncchatID"
+CNC_GROUP = {
+    'name' : CNC_CHAT_NAME,
+    'members' : CNC_CHAT_MEMBERS,
+    'internal_id' : CNC_CHAT_ID,
+}
+NEW_CHAT_NAME = "newchat"
+NEW_CHAT_MEMBERS = [ USER_1, USER_2 ]
+NEW_CHAT_ID = "newchatID"
+NEW_GROUP = {
+    'name' : NEW_CHAT_NAME,
+    'members' : NEW_CHAT_MEMBERS,
+    'internal_id' : NEW_CHAT_ID,
+}
+GROUPS = [CNC_GROUP, SOCIAL_GROUP]
+GROUP_IDS = [ CNC_CHAT_ID, SOCIAL_CHAT_ID ]
+
 MOTD = "This is a message"
 
 logger = logging.getLogger("welcomebot")
@@ -38,29 +60,12 @@ def motd():
     fake_groups.get_motd = MagicMock(return_value=MOTD)
 
     fake_bot = SimpleNamespace()
-    fake_bot._groups_by_internal_id = {
-        CNC_CHAT: { 
-            'name' : CNC_CHAT_NAME,
-            'members' : [ USER_1 ]
-        },
-        SOCIAL_CHAT: {
-            'name' : SOCIAL_CHAT_NAME,
-            'members' : SOCIAL_CHAT_MEMBERS,
-        },
-    }
-    fake_bot._groups_by_name = {
-        CNC_CHAT_NAME: { 
-            'name' : CNC_CHAT_NAME,
-            'members' : [ USER_1 ]
-        },
-        SOCIAL_CHAT: {
-            'name' : SOCIAL_CHAT_NAME,
-            'members' : SOCIAL_CHAT_MEMBERS,
-        },
-    }
+    fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
+    fake_bot.groups = GROUPS
+
     motd = MotDCommand(
         logger,
-        CNC_CHAT,
+        CNC_CHAT_ID,
         fake_groups)
     motd.bot = fake_bot
     return motd
@@ -68,7 +73,7 @@ def motd():
 
 async def test_hello(motd, context):
     context.message.type = MessageType.DATA_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
@@ -92,7 +97,7 @@ async def test_reject_dm(motd, context):
 
 async def test_ignore_cnc_data(motd, context):
     context.message.type = MessageType.DATA_MESSAGE
-    context.message.group = CNC_CHAT
+    context.message.group = CNC_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
@@ -103,7 +108,7 @@ async def test_ignore_cnc_data(motd, context):
 
 async def test_ignore_cnc_update(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = CNC_CHAT
+    context.message.group = CNC_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
@@ -111,14 +116,14 @@ async def test_ignore_cnc_update(motd, context):
 
     # no side effects!
     assert not context.send.called
-    assert not motd.bs.get_members.called
-    assert not motd.bs.put_members.called
-    assert not motd.bs.retain_only.called
+    assert not motd.store.get_members.called
+    assert not motd.store.put_members.called
+    assert not motd.store.retain_only.called
 
 
 async def test_null_update(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
     await motd.handle(context)
@@ -128,75 +133,62 @@ async def test_null_update(motd, context):
 
 async def test_new_user(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
+    UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    motd.bot._groups_by_internal_id[SOCIAL_CHAT]["members"] = NEW_LIST
+    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
+    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
 
     await motd.handle(context)
 
     context.send.assert_called_with(MOTD)
-    motd.bs.put_members.assert_called_with(SOCIAL_CHAT, NEW_LIST)
-    motd.bs.retain_only.assert_called_with(GROUPS)
+    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
+    motd.store.retain_only.assert_called_once
 
 
 async def test_removed_user(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
     OLD_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    motd.bs.get_members = MagicMock(return_value=OLD_LIST)
+    motd.store.get_members = MagicMock(return_value=OLD_LIST)
 
     await motd.handle(context)
 
     assert not context.send.called
 
-    motd.bs.put_members.assert_called_with(SOCIAL_CHAT, SOCIAL_CHAT_MEMBERS)
-    motd.bs.retain_only.assert_called_with(GROUPS)
+    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, SOCIAL_CHAT_MEMBERS)
+    motd.store.retain_only.assert_called_with(GROUP_IDS)
 
 
 async def test_removed_group(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
-    del motd.bot._groups_by_internal_id[CNC_CHAT]
+    motd.bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP])
+    motd.bot.groups = [SOCIAL_GROUP]
     
     await motd.handle(context)
 
-    motd.bs.put_members.assert_called_with(SOCIAL_CHAT, SOCIAL_CHAT_MEMBERS)
-    motd.bs.retain_only.assert_called_with([SOCIAL_CHAT])
+    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, SOCIAL_CHAT_MEMBERS)
+    motd.store.retain_only.assert_called_with([SOCIAL_CHAT_ID])
 
 
 async def test_new_group(motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
+    context.message.group = NEW_CHAT_ID
     context.message.source_uuid = USER_1
 
-    NEW_GROUPS = GROUPS + [ NEW_CHAT ]
-    motd.bot._groups_by_internal_id[NEW_CHAT] = {
-        'name' : 'new name',
-        'members': [],
-    }
+    NEW_GROUPS = GROUPS + [ NEW_GROUP ]
+    NEW_GROUP_IDS = GROUP_IDS + [ NEW_CHAT_ID ]
+    motd.bot.get_group = MagicMock(side_effect=[NEW_GROUP])
+    motd.bot.groups = NEW_GROUPS
     
     await motd.handle(context)
 
-    motd.bs.retain_only.assert_called_with(NEW_GROUPS)
-
-
-async def test_new_group(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
-    context.message.group = SOCIAL_CHAT
-    context.message.source_uuid = USER_1
-
-    NEW_GROUPS = GROUPS + [ NEW_CHAT ]
-    motd.bot._groups_by_internal_id[NEW_CHAT] = {
-        'name' : 'new name',
-        'members': [],
-    }
-    
-    await motd.handle(context)
-
-    motd.bs.retain_only.assert_called_with(NEW_GROUPS)
+    motd.store.put_members.assert_called_with(NEW_CHAT_ID, NEW_CHAT_MEMBERS)
+    motd.store.retain_only.assert_called_with(NEW_GROUP_IDS)
