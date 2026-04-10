@@ -6,10 +6,23 @@ A bot that monitors signal chat groups and posts a message when people join
 
 **Note**: this is a work in progress. These setup instructions are very rough and will be evolving rapidly.
 
-register signal-api locally, then bring up a shim container to copy relevant fiels into the volume:
+Create a local volume to hold the state of the signal-api and the welcomebot. This volume will be replaced by an encrypted volume in the cloud: 
 ```
-docker volume create signal-state
-docker run -it -v ~/.local/share/welcomebot:/home/welcombot -v signal-state:/home/signal_state alpine 
+docker volume create welcomebot_state
+```
+
+Also create a bridge nwork that you will need later:
+```
+docker network create --driver bridge signal
+```
+
+
+Register your account with signal-api, but link the volume in a little higher in the filesystem so we can use the volume for other state sotrage as well:
+```
+docker run --detach --name signal-api --restart=always -p 8080:8080 \
+      --volume welcomebot_state:/home/.local \
+      --network signal \
+      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 ```
 
 run signal-api using that volume:
@@ -21,34 +34,61 @@ docker run -d  --name signal-api --restart=always -p 9922:8080 \
      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 ```
 
-- create a command and control group chat with the bot
-- create .env with
-  - SIGNAL_SERVICE=localhost:9922
-  - PHONE_NUMBER The number of the signal account
-  - WELCOME_MANAGER The signal ID of the manager
-  - WELCOME_CNC The command and control group chat ID
+Open the registration QR code at http://localhost:8080/v1/qrcodelink?device_name=welcome-bot
+And scan it with the "link account" flow from the phone with the bot account.
 
-testlocally with 
+Note that the bot will have access to all the contacts and chats of the account
+you link it to. **You should not use your personal Signal account for this.** You 
+should get a separate phone number, create a Signal account with that number, 
+and then use that account only for the bot.
+
+Replace 12125551212 with the bot's phone number and execute these commands.
+```
+curl http://localhost:8080/v1/groups/+12125551212
+curl http://localhost:8080/v1/contacts/+112125551212
+```
+If you are using a fresh Signal account (you are, right?), then they should both
+return an empty result: `[]`.
+
+Send the bot account a message from the account you want it to trust as the
+management account. Accept that message as the bot using the phone. Then
+invite it to a group chat with a title you will remember, like "Welcomebot
+Control Room".
+
+Rerun those `curl` commands above and look for the new (only!) responses. 
+
+The value WELCOME_MANAGER will be the `uuid` of your entry in the response 
+to the contacts query. The value of WELCOME_CNC will be the `internal_id`
+in the response to the groups query.
+
+Now create .env with:
+```
+SIGNAL_SERVICE=localhost:8080
+PHONE_NUMBER=...
+WELCOME_MANAGER=...
+WELCOME_CNC=...
+```
+
+Then test locally with:
 ```
 uv sync
 uv run pytest
 uv run python -m welcomebot
 ```
 
-migrating these files to the volume:
- - signalbot_internal_state.db
- - bot_memory.db
+If you send the message "help" to the bot in the CNC channel, it
+should reply with a help message.
 
-then run the bot in it's own container:
+Now you should be able to run the bot in it's own container:
 ```
 docker run -d --name welcomebot --restart=always  \
      -v signal-state:/home/.local \
-     --env-file .env -e SIGNAL_SERVICE=127.0.0.1:8080 \
+     --env-file .env \
      --network container:signal-api \
      welcomebot
 ```
 
-*TODO*: dockercompose
+*TODO*: dockercompose or k8s
 
 ## controlling the bot
 
