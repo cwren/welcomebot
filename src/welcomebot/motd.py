@@ -1,4 +1,5 @@
 from signalbot import Command, Context, MessageType
+from . import util
 
 class MotDCommand(Command):
     def __init__(self, logger, cnc, store):
@@ -7,6 +8,8 @@ class MotDCommand(Command):
         self.store = store
 
     async def handle(self, context: Context) -> None:
+        group_refresh_needed = not self.store.has_group(context.message.group)
+
         if context.message.group == self.cnc:
             self.logger.info("social is ignoring cnc message")
             return
@@ -26,34 +29,7 @@ class MotDCommand(Command):
 
         if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
             self.logger.info("social processing group update")
-            post_group = self.bot.get_group(context.message.group)
-            prev_members = self.store.get_members(context.message.group)
-            new_member = False
-            if prev_members:
-                for member in post_group["members"]:
-                    self.logger.debug(f'  looking for {member} in old group')
-                    if member not in prev_members:
-                        self.logger.debug("  found a new member of the group")
-                        new_member = True
-                for member in prev_members:
-                    self.logger.debug(f'  looking for {member} in new group')
-                    if member not in post_group["members"]:
-                        self.logger.debug("  a member left the group")
-            else:
-                self.logger.debug("  found a new group")
-                # TODO post TOC
+            group_refresh_needed = True
 
-            # update member cache
-            self.store.put_members(context.message.group, post_group["members"])
-            valid_group_ids = [ g["internal_id"] for g in self.bot.groups ]
-            self.store.retain_only(valid_group_ids)
-
-            if new_member:
-                motd = self.store.get_motd(context.message.group)
-                # TODO don't send too frequently
-                if motd:
-                    self.logger.info("sent the message of the day")
-                    await context.send(motd)
-                else:
-                    self.logger.info("no message of the day to send")
-            return
+        if group_refresh_needed:
+            await util.update_group(self.logger, self.bot, context, self.store)

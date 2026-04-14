@@ -1,6 +1,7 @@
 import re
 
 from signalbot import Command, Context, MessageType
+from . import util
 
 HELP_MESSAGE = """you can use these commands:
   list_groups: return known group names
@@ -27,6 +28,9 @@ class CNCCommand(Command):
             reply = "I only reply to messages in the CNC channel\n"
             await context.send(reply)
             return
+        
+        if not self.store.has_group(context.message.group):
+            await util.update_group(self.logger, self.bot, context, self.store)
 
         if context.message.type == MessageType.DATA_MESSAGE:
             self.logger.info("cnc processing data message")

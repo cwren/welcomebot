@@ -17,6 +17,7 @@ CHAT_1_TAG = "aabbfgf" # sorts to group 1
 GROUP_1 = {
     'name' : CHAT_1_NAME,
     'internal_id' : CHAT_1_ID,
+    'members' : MANAGERS,
 }
 CHAT_2_NAME = "chat2"
 CHAT_2_ID = "aabbfggf_chat2"
@@ -24,6 +25,7 @@ CHAT_2_TAG = "aabbfgg" # sorts to group 2
 GROUP_2 = {
     'name' : CHAT_2_NAME,
     'internal_id' : CHAT_2_ID,
+    'members': [],
 }
 GROUPS = [GROUP_1, GROUP_2]
 GROUP_IDS = [ CHAT_1_ID, CHAT_2_ID ]
@@ -49,8 +51,12 @@ def context():
 def cnc():
     fake_groups = SimpleNamespace()
     fake_groups.list_groups = MagicMock(return_value=GROUPS)
+    fake_groups.get_members = MagicMock(return_value=MANAGERS)
+    fake_groups.put_members = MagicMock()
+    fake_groups.retain_only = MagicMock()
     fake_groups.put_motd = MagicMock()
     fake_groups.get_motd = MagicMock()
+    fake_groups.has_group = MagicMock(return_value=True)
 
     fake_bot = SimpleNamespace()
     fake_bot.get_group = MagicMock(side_effect=GROUPS)
@@ -221,3 +227,15 @@ async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert len(context.send.call_args.args) == 1
     assert 'invalid' in context.send.call_args.args[0]
     
+
+async def test_unknwon_cnc_channel(cnc, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd badnum'
+
+    cnc.store.has_group = MagicMock(return_value=False)
+    
+    await cnc.handle(context)
+
+    cnc.store.put_members.assert_called_with(CNC_ID, MANAGERS)

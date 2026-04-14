@@ -33,6 +33,13 @@ class BotStore():
         cur.close()
         return [ row[0] for row in rows ]
 
+    def has_group(self, group):
+        cur = self.con.cursor()
+        res = cur.execute(f'SELECT group_id FROM group_members where group_id = "{group}" LIMIT 1')
+        rows = res.fetchone()
+        cur.close()
+        return not not rows
+
     def retain_only(self, known_groups):
         # TODO also prune old groups
         saved_groups = self.list_groups()

@@ -58,6 +58,7 @@ def motd():
     fake_groups.put_members = MagicMock()
     fake_groups.retain_only = MagicMock()
     fake_groups.get_motd = MagicMock(return_value=MOTD)
+    fake_groups.has_group = MagicMock(return_value=True)
 
     fake_bot = SimpleNamespace()
     fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
@@ -187,6 +188,7 @@ async def test_new_group(motd, context):
     NEW_GROUP_IDS = GROUP_IDS + [ NEW_CHAT_ID ]
     motd.bot.get_group = MagicMock(side_effect=[NEW_GROUP])
     motd.bot.groups = NEW_GROUPS
+    motd.store.has_group = MagicMock(return_value=False)
     
     await motd.handle(context)
 

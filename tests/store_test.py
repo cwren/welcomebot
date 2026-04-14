@@ -54,3 +54,9 @@ async def test_store_motd_with_special_characters(store):
     message = 'This is a the "Message of the Day" 👋👋 '
     store.put_motd(SOCIAL_CHAT, message)
     assert store.get_motd(SOCIAL_CHAT) == message
+    
+async def test_store_has_group(store):
+    assert not store.has_group(SOCIAL_CHAT)
+    store.put_members(SOCIAL_CHAT, [ USER_1, USER_2])
+    assert store.has_group(SOCIAL_CHAT)
+    assert not store.has_group(CNC_CHAT)
