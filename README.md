@@ -29,7 +29,7 @@ run signal-api using that volume:
 ```
 docker create network signal
 docker run -d  --name signal-api --restart=always -p 9922:8080 \
-     -v signal-state:/home/.local \
+     -v welcomebot_state:/home/.local \
      --network signal \
      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 ```
@@ -79,16 +79,29 @@ uv run python -m welcomebot
 If you send the message "help" to the bot in the CNC channel, it
 should reply with a help message.
 
-Now you should be able to run the bot in it's own container:
+## containerized!
+
+Now you should be able to copy your local state to a volume and run the bot in it's own container:
 ```
+# copy state into the volume
+docker build -f copypaste.dockerfile -t copypaste .
+docker run -it -v ~/.local/share:/home/a -v wecomebot_state:/home/b copypaste
+
+# run the bot
+docker build -f docker/welcomebot.dockerfile -t welcomebot .
 docker run -d --name welcomebot --restart=always  \
-     -v signal-state:/home/.local \
+     -v welcomebot_state:/home/.local \
      --env-file .env \
      --network container:signal-api \
      welcomebot
 ```
 
-*TODO*: dockercompose or k8s
+## compose 
+
+Stop the other containers and use `compose.yaml` config to bring the services up together:
+```
+docker compose up
+```
 
 ## controlling the bot
 
@@ -102,3 +115,14 @@ hello and welcome to the chat.
 please adhere to group guidlines at
 https://codeforamerica.org/code-of-conduct/
 ```
+## Release Process
+
+```
+uv run pytest
+uv version --bump patch
+uv build 
+git push
+uv publish
+```
+
+

@@ -1,0 +1,27 @@
+services:
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    environment:
+      - MODE=json-rpc
+    volumes:
+      - state:/home/.local 
+    networks:
+      - signal
+  welcomebot:
+    image: welcomebot:latest
+    environment:
+      - SIGNAL_SERVICE=signal-api:8080
+      - PHONE_NUMBER=${PHONE_NUMBER}
+      - WELCOME_MANAGER=${WELCOME_MANAGER}
+      - WELCOME_CNC=${WELCOME_CNC}
+    volumes:
+      - state:/home/.local 
+    networks:
+      - signal
+networks:
+  signal:
+    driver: bridge
+volumes:
+  state:
+    external: true
+    name: welcomebot_state 
