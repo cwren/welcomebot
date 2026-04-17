@@ -27,7 +27,6 @@ docker run --detach --name signal-api --restart=always -p 8080:8080 \
 
 run signal-api using that volume:
 ```
-docker create network signal
 docker run -d  --name signal-api --restart=always -p 9922:8080 \
      -v welcomebot_state:/home/.local \
      --network signal \

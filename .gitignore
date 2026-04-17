@@ -7,3 +7,4 @@ notes.txt
 *.egg-info
 volume
 .DS_Store
+prod
