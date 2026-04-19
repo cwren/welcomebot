@@ -1,3 +1,4 @@
+from importlib.metadata import version
 import logging
 from types import SimpleNamespace
 import pytest
@@ -294,3 +295,15 @@ async def test_who(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespa
     assert len(context.send.call_args.args) == 1
     assert MANAGER_1 in context.send.call_args.args[0]
     assert MANAGER_2 in context.send.call_args.args[0]
+
+
+async def test_version(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'version'
+
+    await cnc.handle(context)
+    
+    assert len(context.send.call_args.args) == 1
+    assert version('welcomebot') in context.send.call_args.args[0]

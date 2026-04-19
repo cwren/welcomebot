@@ -1,3 +1,4 @@
+from importlib.metadata import version
 import re
 
 from signalbot import Command, Context, MessageType
@@ -10,6 +11,7 @@ HELP_MESSAGE = """you can use these commands:
   set_tos <newline> message
   get_tos
   who: list members of cnc chat
+  version: report the bot version number
 
   motd is the message posted in a specific group when a new member joins.
 
@@ -159,6 +161,12 @@ class CNCCommand(Command):
                     members = self.bot.get_group(context.message.group)['members']
                     reply = 'who is in this chat:\n'
                     reply += '\n'.join([ f'{m}' for m in members ])
+                    await context.send(reply)
+                    return
+
+                case 'version':
+                    self.logger.info("cnc processing version request")
+                    reply = f'I am running welcomebot {version('welcomebot')}'
                     await context.send(reply)
                     return
 
