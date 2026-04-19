@@ -15,16 +15,21 @@ class MotDCommand(Command):
             return
 
         if context.message.group == None:
-            self.logger.info("social rebuffing DM message")
-            reply = "I only reply to messages in the group chats"
-            await context.send(reply)
-            return
+            self.logger.info("social responding to a DM message")
+            if self.bot.config.phone_number != context.message.source_number:
+                reply = self.store.get_motd('TOS')
+                if not reply:
+                    reply = "I only reply to messages in the group chats"
+                await context.send(reply)
+                return
 
         if context.message.type == MessageType.DATA_MESSAGE:
             self.logger.info("social processing data message")
-            reply = f'I heard {context.message.text}'
-            self.logger.debug("social sending response")
-            await context.send(reply)
+            mentions = [ m['number'] for m in context.message.mentions if m ]
+            if self.bot.config.phone_number in mentions:
+                reply = self.store.get_motd('TOS')
+                if reply:
+                    await context.send(reply)
             return
 
         if context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
@@ -32,4 +37,14 @@ class MotDCommand(Command):
             group_refresh_needed = True
 
         if group_refresh_needed:
-            await util.update_group(self.logger, self.bot, context, self.store)
+            new_member = await util.update_group(self.logger, self.bot, context, self.store)
+            
+            if new_member:  
+                motd = self.store.get_motd(context.message.group)
+                # TODO don't send too frequently
+                if motd:
+                    self.logger.info("sent the message of the day")
+                    await context.send(motd)
+                else:
+                    self.logger.info("no message of the day to send")
+            return

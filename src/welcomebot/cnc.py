@@ -4,8 +4,17 @@ from signalbot import Command, Context, MessageType
 from . import util
 
 HELP_MESSAGE = """you can use these commands:
-  list_groups: return known group names
-  set_motd: set_motd group <newline> message"""
+  list_groups: return enumerated known group names
+  set_motd group <newline> message
+  get_motd group
+  set_tos <newline> message
+  get_tos
+  who: list members of cnc chat
+
+  motd is the message posted in a specific group when a new member joins.
+
+  tos is the message posted in response to DMs or mentions of the bot.
+  """
 
 
 class CNCCommand(Command):
@@ -24,9 +33,7 @@ class CNCCommand(Command):
                              
     async def handle(self, context: Context) -> None:
         if context.message.group != self.cnc:  # guard against DMs
-            self.logger.info("cnc ignoring DM message")
-            reply = "I only reply to messages in the CNC channel\n"
-            await context.send(reply)
+            self.logger.info("cnc ignoring message not in the CNC group chat")
             return
         
         if not self.store.has_group(context.message.group):
@@ -35,10 +42,12 @@ class CNCCommand(Command):
         if context.message.type == MessageType.DATA_MESSAGE:
             self.logger.info("cnc processing data message")
             if context.message.source_uuid not in self.managers:
-                reply = "I only reply to messages from a manager\n"
-                await context.send(reply)
+                self.logger.info("cnc ignoring message not in the CNC group chat")
                 return
-            ops = context.message.text.split(maxsplit=2)
+            
+            parts = context.message.text.split('\n', maxsplit=1)
+            ops = parts[0].split(maxsplit=2)
+            
             match(ops[0].lower()):
                 case 'help':
                     self.logger.info("cnc sending help message")
@@ -56,13 +65,14 @@ class CNCCommand(Command):
                 case 'set_motd':
                     self.logger.info("cnc processing set_mod request")
                     if len(ops) < 2:
-                        reply = f'unrecognized set_motd syntax'
+                        reply = 'unrecognized set_motd syntax'
                         await context.send(reply)
                         return
 
                     group_info = self._get_group_info()                    
                     group_tag = ops[1]
-                    motd = ops[2] if len(ops) == 3 else None
+
+                    motd = parts[1] if len(parts) == 2 else None
 
                     try: 
                         group_tag = int(group_tag)
@@ -88,13 +98,12 @@ class CNCCommand(Command):
                 case 'get_motd':
                     self.logger.info("cnc processing get_mod request")
                     if len(ops) < 2:
-                        reply = f'unrecognized set_motd syntax'
+                        reply = 'unrecognized get_motd syntax'
                         await context.send(reply)
                         return
                     
                     group_info = self._get_group_info()                   
                     group_tag = ops[1]
-                    motd = ops[2] if len(ops) == 3 else None
 
                     try: 
                         group_tag = int(group_tag)
@@ -117,6 +126,41 @@ class CNCCommand(Command):
                     await context.send(reply)
                     return
 
+                case 'set_tos':
+                    self.logger.info("cnc processing set_tos request")
+                    if len(ops) < 1:
+                        reply = 'unrecognized set_tos syntax'
+                        await context.send(reply)
+                        return
+
+                    tos = parts[1] if len(parts) == 2 else None
+
+                    self.store.put_motd('TOS', tos)
+                    if tos:
+                        reply = 'tos set'
+                    else:
+                        reply = 'tos cleared'
+                    await context.send(reply)
+                    return
+
+                case 'get_tos':
+                    self.logger.info("cnc processing get_tos request")
+
+                    tos = self.store.get_motd('TOS')
+                    if tos:
+                        reply = f'tos is: \n{tos}'
+                    else:
+                        reply = 'there is no tos for this bot'
+                    await context.send(reply)
+                    return
+
+                case 'who':
+                    self.logger.info("cnc processing who request")
+                    members = self.bot.get_group(context.message.group)['members']
+                    reply = 'who is in this chat:\n'
+                    reply += '\n'.join([ f'{m}' for m in members ])
+                    await context.send(reply)
+                    return
 
             reply = """unknown command, type "help" for a list"""
             await context.send(reply)

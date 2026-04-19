@@ -36,6 +36,8 @@ MOTD = """This is a
 multiline "message"
 with some emoji:  👋👋"""
 
+TOS = """I'm a little teapot"""
+
 logger = logging.getLogger("welcomebot")
 
 
@@ -102,8 +104,8 @@ async def test_reject_dm(cnc: CNCCommand[logging.Logger, list[str], str, SimpleN
     context.message.text = "Hello"
 
     await cnc.handle(context)
-    assert len(context.send.call_args.args) == 1
-    assert "CNC channel" in context.send.call_args.args[0]
+    
+    context.send.assert_not_called()
 
 
 async def test_reject_user(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -113,8 +115,7 @@ async def test_reject_user(cnc: CNCCommand[logging.Logger, list[str], str, Simpl
     context.message.text = "Hello"
 
     await cnc.handle(context)
-    assert len(context.send.call_args.args) == 1
-    assert "from a manager" in context.send.call_args.args[0]
+    context.send.assert_not_called()
 
 
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -239,3 +240,57 @@ async def test_unknwon_cnc_channel(cnc, context):
     await cnc.handle(context)
 
     cnc.store.put_members.assert_called_with(CNC_ID, MANAGERS)
+
+
+async def test_clear_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_tos'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_motd.assert_called_once_with('TOS', None)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'cleared' in context.send.call_args.args[0]
+    assert 'tos' in context.send.call_args.args[0]
+
+
+async def test_set_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_tos\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_motd.assert_called_once_with('TOS', TOS)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'set' in context.send.call_args.args[0]
+    assert 'tos' in context.send.call_args.args[0]
+
+
+async def test_get_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_tos'
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_called_once_with('TOS')
+
+
+async def test_who(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'who'
+
+    await cnc.handle(context)
+    
+    assert len(context.send.call_args.args) == 1
+    assert MANAGER_1 in context.send.call_args.args[0]
+    assert MANAGER_2 in context.send.call_args.args[0]

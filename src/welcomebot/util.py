@@ -22,12 +22,4 @@ async def update_group (logger, bot, context, store):
     valid_group_ids = [ g["internal_id"] for g in bot.groups ]
     store.retain_only(valid_group_ids)
 
-    if new_member:
-        motd = store.get_motd(context.message.group)
-        # TODO don't send too frequently
-        if motd:
-            logger.info("sent the message of the day")
-            await context.send(motd)
-        else:
-            logger.info("no message of the day to send")
-    return
+    return new_member

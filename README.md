@@ -19,18 +19,10 @@ docker network create --driver bridge signal
 
 Register your account with signal-api, but link the volume in a little higher in the filesystem so we can use the volume for other state sotrage as well:
 ```
-docker run --detach --name signal-api --restart=always -p 8080:8080 \
+docker run --detach --name signal-api -p 8080:8080 \
       --volume welcomebot_state:/home/.local \
       --network signal \
       -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
-```
-
-run signal-api using that volume:
-```
-docker run -d  --name signal-api --restart=always -p 9922:8080 \
-     -v welcomebot_state:/home/.local \
-     --network signal \
-     -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
 ```
 
 Open the registration QR code at http://localhost:8080/v1/qrcodelink?device_name=welcome-bot

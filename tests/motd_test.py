@@ -9,6 +9,8 @@ from welcomebot import MotDCommand
 
 USER_1 = "user1"
 USER_2 = "user2"
+MY_NUMBER = "+1234567890"
+OTHER_NUMBER = "+0987654321"
 
 SOCIAL_CHAT_NAME = "socialchat"
 SOCIAL_CHAT_MEMBERS = [ USER_1 ]
@@ -46,6 +48,8 @@ logger = logging.getLogger("welcomebot")
 def context():
     context = SimpleNamespace()
     context.message = SimpleNamespace()
+    context.message.mentions = []
+    context.message.source_number = OTHER_NUMBER
     context.send = AsyncMock(return_value=3)
     return context
 
@@ -63,6 +67,8 @@ def motd():
     fake_bot = SimpleNamespace()
     fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
     fake_bot.groups = GROUPS
+    fake_bot.config = SimpleNamespace()
+    fake_bot.config.phone_number = MY_NUMBER
 
     motd = MotDCommand(
         logger,
@@ -80,15 +86,50 @@ async def test_hello(motd, context):
 
     await motd.handle(context)
 
+    context.send.assert_not_called()
+
+
+async def test_ignore_self_dm(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+    context.message.source_uuid = USER_1
+    context.message.source_number = MY_NUMBER
+
+    await motd.handle(context)
+
+    context.send.assert_not_called()
+
+
+async def test_respond_to_mention(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+    context.message.source_uuid = USER_1
+    context.message.mentions = [ { 'number': MY_NUMBER } ]
+
+    await motd.handle(context)
+
     assert len(context.send.call_args.args) == 1
-    assert "Hello" in context.send.call_args.args[0]
+    assert MOTD == context.send.call_args.args[0]
 
 
-async def test_reject_dm(motd, context):
+async def test_reject_dm_with_MOTD(motd, context):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
+
+    await motd.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert MOTD == context.send.call_args.args[0]
+
+
+async def test_reject_dm_generic(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = None
+    context.message.source_uuid = USER_1
+    context.message.text = "Hello"
+    motd.store.get_motd = MagicMock(return_value=None)
 
     await motd.handle(context)
 
