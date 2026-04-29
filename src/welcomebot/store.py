@@ -48,7 +48,7 @@ class BotStore():
             self.logger.debug(f'dropping {len(obsolete_groups)} obsolete groups')
             cur = self.con.cursor()
             placeholders = ', '.join('?' for _ in obsolete_groups)
-            cur.executemany(f'DELETE FROM group_members WHERE group_id = ({placeholders})', obsolete_groups)
+            cur.executemany(f'DELETE FROM group_members WHERE group_id = ({placeholders})', (obsolete_groups,))
             self.con.commit()
             cur.close()
         else:
