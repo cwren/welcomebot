@@ -114,7 +114,7 @@ class CNCCommand(Command):
                     return
 
                 case 'get_group_id':
-                    self.logger.info("cnc processing get_mod request")
+                    self.logger.info("cnc processing get_group_id request")
                     if len(ops) < 2:
                         reply = 'unrecognized get_group_id syntax'
                         await context.send(reply)
@@ -175,6 +175,8 @@ class CNCCommand(Command):
                     await context.send(reply)
                     return
 
+
+            self.logger.info("cnc received an unknown command in the CNC group chat")
             reply = """unknown command, type "help" for a list"""
             await context.send(reply)
             return

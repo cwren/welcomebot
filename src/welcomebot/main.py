@@ -13,7 +13,7 @@ logger = logging.getLogger("welcomebot")
 config_directory = os.environ["HOME"] / Path('.local/share/welcomebot')
  
 def loop():
-    logger.info("main init")
+    logger.debug("main init")
     bot = SignalBot(
         Config(
             signal_service=os.environ["SIGNAL_SERVICE"],
@@ -40,7 +40,8 @@ def main():
     load_dotenv()
 
     # welcomebot logs
-    logger.setLevel(logging.DEBUG)
+    
+    logger.setLevel(os.environ.get('LOGLEVEL', 'INFO').upper())
     handler = logging.StreamHandler()
     logtag = os.environ["LOGTAG"] if "LOGTAG" in os.environ else "DEV"
     formatter = logging.Formatter(
