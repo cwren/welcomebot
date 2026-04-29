@@ -111,6 +111,8 @@ https://codeforamerica.org/code-of-conduct/
 ```
 uv run pytest
 uv version --bump patch
+rm -rf dist/
+set -a; source .env; set +a
 uv build 
 git push
 uv publish
