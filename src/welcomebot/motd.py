@@ -21,7 +21,7 @@ class MotDCommand(Command):
                 reply = self.store.get_motd('TOS')
                 if not reply:
                     reply = "I only reply to messages in the group chats"
-                    self.logger.warn("social has no TOS to send")
+                    self.logger.warning("social has no TOS to send")
                 await context.send(reply)
 
         elif context.message.type == MessageType.DATA_MESSAGE:
@@ -32,7 +32,7 @@ class MotDCommand(Command):
                 reply = self.store.get_motd('TOS')
                 if not reply:
                     reply = "I only reply to messages in the group chats"
-                    self.logger.warn("social has no TOS to send")
+                    self.logger.warning("social has no TOS to send")
                 await context.send(reply)
 
         elif context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
@@ -50,5 +50,5 @@ class MotDCommand(Command):
                     self.logger.info("sent the message of the day")
                     await context.send(motd)
                 else:
-                    self.logger.warn("no message of the day to send")
+                    self.logger.warning("no message of the day to send")
             return
