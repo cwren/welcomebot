@@ -1,16 +1,17 @@
 from importlib.metadata import version
-import re
+import hashlib
 
 from signalbot import Command, Context, MessageType
 from . import util
 
 HELP_MESSAGE = """you can use these commands:
   list_groups: return enumerated known group names
-  set_motd group <newline> message
-  get_motd group
+  set_motd GROUP <newline> message
+  get_motd GROUP
   set_tos <newline> message
   get_tos
   who: list members of cnc chat
+  get_group_id GROUP: get the internal Signal ID of a group
   version: report the bot version number
 
   motd is the message posted in a specific group when a new member joins.
@@ -28,9 +29,7 @@ class CNCCommand(Command):
 
     def _get_group_info(self):
         group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in self.bot.groups ]
-        group_info = sorted(group_info, key=lambda x: x['name'])
-        for i, info in enumerate(group_info):
-            info['tag'] = i
+        group_info = { hashlib.sha256(group['internal_id'].encode()).hexdigest()[0:5].upper() : group for group in group_info }
         return group_info
                              
     async def handle(self, context: Context) -> None:
@@ -60,7 +59,7 @@ class CNCCommand(Command):
                     self.logger.info("cnc processing list request")
                     group_info = self._get_group_info()
                     reply = 'known groups:\n'
-                    reply += '\n'.join([ f'{group['tag']}: {group["name"]}' for group in group_info ])
+                    reply += '\n'.join([ f'{tag}: {group_info[tag]['name']}' for tag in group_info.keys() ])
                     await context.send(reply)
                     return
 
@@ -76,15 +75,8 @@ class CNCCommand(Command):
 
                     motd = parts[1] if len(parts) == 2 else None
 
-                    try: 
-                        group_tag = int(group_tag)
-                    except ValueError:
+                    if group_tag not in group_info:
                         reply = f'invalid group index: {group_tag}'
-                        await context.send(reply)
-                        return
-
-                    if group_tag > len(group_info):
-                        reply = f'group index out of range: {group_tag}'
                         await context.send(reply)
                         return
 
@@ -107,15 +99,8 @@ class CNCCommand(Command):
                     group_info = self._get_group_info()                   
                     group_tag = ops[1]
 
-                    try: 
-                        group_tag = int(group_tag)
-                    except ValueError:
+                    if group_tag not in group_info:
                         reply = f'invalid group index: {group_tag}'
-                        await context.send(reply)
-                        return
-
-                    if group_tag >= len(group_info):
-                        reply = f'group index out of range: {group_tag}'
                         await context.send(reply)
                         return
                     
@@ -125,6 +110,26 @@ class CNCCommand(Command):
                         reply = f'motd for group {group_tag} ({group['name']}) is: \n{motd}'
                     else:
                         reply = f'there is no motd for group {group_tag} ({group['name']})'
+                    await context.send(reply)
+                    return
+
+                case 'get_group_id':
+                    self.logger.info("cnc processing get_mod request")
+                    if len(ops) < 2:
+                        reply = 'unrecognized get_group_id syntax'
+                        await context.send(reply)
+                        return
+                    
+                    group_info = self._get_group_info()                   
+                    group_tag = ops[1]
+
+                    if group_tag not in group_info:
+                        reply = f'invalid group index: {group_tag}'
+                        await context.send(reply)
+                        return
+                    
+                    group = group_info[group_tag]
+                    reply = f'id for group {group['name']} is: {group['internal_id']}'
                     await context.send(reply)
                     return
 
