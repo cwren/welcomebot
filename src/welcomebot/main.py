@@ -37,18 +37,17 @@ def loop():
 def main():
     # signalbot logs
     enable_console_logging(logging.WARNING)
+    load_dotenv()
 
     # welcomebot logs
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
+    logtag = os.environ["LOGTAG"] if "LOGTAG" in os.environ else "DEV"
     formatter = logging.Formatter(
-        "%(asctime)s %(name)s %(filename)s [%(levelname)s] - %(message)s"
+        f'%(asctime)s %(name)s {logtag} %(filename)s [%(levelname)s] - %(message)s'
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-
-    load_dotenv()
-    config_directory = os.environ["HOME"] / Path('.local/share/welcomebot')
 
     loop()
 
