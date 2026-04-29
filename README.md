@@ -116,4 +116,10 @@ git push
 uv publish
 ```
 
+## Primary Dependancies
+
+- https://github.com/bbernhard/signal-cli-rest-api
+- https://github.com/signalbot-org/signalbot
+
+
 

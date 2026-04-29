@@ -12,6 +12,11 @@ from . import store
 logger = logging.getLogger("welcomebot")
 config_directory = os.environ["HOME"] / Path('.local/share/welcomebot')
  
+async def lubdub(bot) -> None:
+    await bot.init_task
+    logger.info("heartbeat")
+
+
 def loop():
     logger.debug("main init")
     bot = SignalBot(
@@ -30,6 +35,8 @@ def loop():
     bot_store = store.BotStore(logger, db=config_directory / "bot_memory.db")
     bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store), groups=[cnc_id]) # monitor other groups
     bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups
+    bot.scheduler.add_job(lubdub, args=[bot], trigger="interval", seconds=15)
+
     logger.info("bot started")
     bot.start()
 
