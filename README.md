@@ -113,9 +113,9 @@ https://codeforamerica.org/code-of-conduct/
 ```
 uv run pytest
 uv version --bump patch
-git commit
 tag=v$(uv version --short)
-git tag $tag
+git commit -S -a -m "publishing $tag"
+git tag -m "publishing $tag" $tag
 git push --tags
 ```
 
