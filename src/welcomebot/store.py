@@ -24,7 +24,10 @@ class BotStore():
         cur.close()
 
     def __del__(self):
-        self.con.close()
+        try:
+            self.con.close()
+        except:
+            pass
 
     def list_groups(self):
         cur = self.con.cursor()

@@ -79,12 +79,14 @@ docker build -f copypaste.dockerfile -t copypaste .
 docker run -it -v ~/.local/share:/home/a -v wecomebot_state:/home/b copypaste
 
 # run the bot
-docker build -f docker/welcomebot.dockerfile -t welcomebot .
-docker run -d --name welcomebot --restart=always  \
+docker build -f docker/welcomebot.dockerfile \
+      --build-arg WELCOMEBOT_VERSION=0.1.8 \
+      -t welcomebot:v0.1.8 .
+docker run -d --name welcomebot --rm \
      -v welcomebot_state:/home/.local \
      --env-file .env \
      --network container:signal-api \
-     welcomebot
+     welcomebot:v0.1.8
 ```
 
 ## compose 
@@ -111,11 +113,10 @@ https://codeforamerica.org/code-of-conduct/
 ```
 uv run pytest
 uv version --bump patch
-rm -rf dist/
-set -a; source .env; set +a
-uv build 
-git push
-uv publish
+git commit
+tag=v$(uv version --short)
+git tag $tag
+git push --tags
 ```
 
 ## Primary Dependancies
