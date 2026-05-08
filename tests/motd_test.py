@@ -137,6 +137,41 @@ async def test_reject_dm_generic(motd, context):
     assert "group chats" in context.send.call_args.args[0]
 
 
+async def test_ignore_sync(motd, context):
+    context.message.type = MessageType.CONTACT_SYNC_MESSAGE
+    context.message.group = None
+    context.message.source_uuid = USER_1
+    motd.store.get_motd = MagicMock(return_value=None)
+
+    await motd.handle(context)
+    
+    assert not context.send.called
+
+
+async def test_ignore_empty_dm(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = None
+    context.message.source_uuid = USER_1
+    context.message.text = ""
+    motd.store.get_motd = MagicMock(return_value=None)
+
+    await motd.handle(context)
+    
+    assert not context.send.called
+
+
+async def test_ignore_missing_text(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = None
+    context.message.source_uuid = USER_1
+    context.message.text = None
+    motd.store.get_motd = MagicMock(return_value=None)
+
+    await motd.handle(context)
+    
+    assert not context.send.called
+
+
 async def test_ignore_cnc_data(motd, context):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_CHAT_ID
