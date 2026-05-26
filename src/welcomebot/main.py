@@ -7,6 +7,7 @@ from signalbot import SignalBot, Config, SQLiteConfig, enable_console_logging
 
 from . import cnc
 from . import motd
+from . import periodic
 from . import store
 
 logger = logging.getLogger("welcomebot")
@@ -14,6 +15,10 @@ config_directory = os.environ["HOME"] / Path('.local/share/welcomebot')
  
 def lubdub() -> None:
     logger.info("heartbeat")
+
+
+async def remind(reminders) -> None:
+    await reminders.process_queue()
 
 
 def loop():
@@ -32,9 +37,11 @@ def loop():
     managers = re.split(r'[\s|,:]+', os.environ["WELCOME_MANAGER"])
 
     bot_store = store.BotStore(logger, db=config_directory / "bot_memory.db")
+    reminders = periodic.Reminders(logger, bot, store)
     bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store), groups=[cnc_id]) # monitor other groups
     bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups
     bot.scheduler.add_job(lubdub, trigger="interval", seconds=60, coalesce=True, max_instances=1)
+    bot.scheduler.add_job(remind, args=[reminders], trigger='cron', hour='12', coalesce=True, max_instances=1)
 
     logger.info("bot started")
     bot.start()

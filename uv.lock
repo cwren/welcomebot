@@ -184,6 +184,15 @@ wheels = [
 ]
 
 [[package]]
+name = "juliandate"
+version = "1.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/38/f023a2914ea89276da29b3ca5dba878f287491709248dff794a1a7c0d008/juliandate-1.0.5.tar.gz", hash = "sha256:1272e8e7099110eba87a1d65badf01d984befb1271040896df51e99c523f502a", size = 18542, upload-time = "2024-12-12T02:42:54.184Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/7d/eddba9471294305c5d918b4742747d87d0f88e23a87f192b9ad2fe9397e9/juliandate-1.0.5-py3-none-any.whl", hash = "sha256:ac3f542916ce75ae92c4ac0b0dd6a491ab013c2a792865bfa550ae8660a18a27", size = 18469, upload-time = "2024-12-12T02:42:52.01Z" },
+]
+
+[[package]]
 name = "multidict"
 version = "6.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -513,6 +522,7 @@ version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "dotenv" },
+    { name = "juliandate" },
     { name = "signalbot" },
 ]
 
@@ -525,6 +535,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
+    { name = "juliandate", specifier = ">=1.0.5" },
     { name = "signalbot", specifier = ">=0.25.0" },
 ]
 
