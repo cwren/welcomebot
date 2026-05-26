@@ -1,5 +1,5 @@
 from signalbot import Command, Context, MessageType
-from . import util
+from .util import update_group
 
 class MotDCommand(Command):
     def __init__(self, logger, cnc, store):
@@ -45,7 +45,7 @@ class MotDCommand(Command):
 
         if group_refresh_needed:
             self.logger.info("social checking group membership")
-            new_member = await util.update_group(self.logger, self.bot, context, self.store)
+            new_member = await update_group(self.logger, self.bot, context, self.store)
             
             if new_member:  
                 motd = self.store.get_motd(context.message.group)
