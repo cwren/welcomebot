@@ -14,6 +14,9 @@ class MotDCommand(Command):
             self.logger.info("social is ignoring cnc message")
             return
 
+        elif context.message.type == MessageType.READ_MESSAGE:
+            group_refresh_needed = False
+                
         elif context.message.type == MessageType.DATA_MESSAGE:
             if not context.message.group:
                 if context.message.text:
