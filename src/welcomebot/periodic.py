@@ -1,8 +1,9 @@
+import asyncio
 from datetime import datetime 
 import juliandate as jd
 
 def today(dt=datetime):
-    return int(jd.from_gregorian(*list(dt.now().timetuple())[0:3]))
+    return int(jd.from_gregorian(*list(dt.now().timetuple())[0:3], 12))
 
 def to_ymd(julian_date):
     return datetime(*jd.to_gregorian(julian_date)).strftime('%Y-%m-%d')
@@ -23,5 +24,11 @@ class Reminders():
         self.store = store
     
     async def process_queue(self):
-        self.logger.info("poke")
-        await self.bot.send("Mbj8dzEIFfw9OGvL9SVmzopOXyOzERCE/YfnZAKk7N0=", "lubdub")
+        self.logger.info('checking for reminders')
+        reminders = self.store.get_due_reminders()
+        promises = []
+        for reminder in reminders:
+            self.logger.info(f'sending reminder {reminder.id}')
+            promises.append(self.bot.send(reminder.group_id, reminder.message))
+            self.store.repost_reminder(reminder.id)
+        return asyncio.gather(*promises)       

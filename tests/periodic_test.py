@@ -1,21 +1,88 @@
 from datetime import datetime, UTC
-from unittest.mock import MagicMock
+import logging
+import pytest
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, call
 
-from welcomebot import to_ymd, today
-
-async def test_real_today():
-    assert today() > 2461000 # safely in the past
+from welcomebot import Reminder, Reminders, to_ymd, today
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
-TODAY = 2461186
+TODAY = 2461187
+CHAT_ID_1 = "chatIDOne"
+MESSAGE_1 = "message one"
+INTERVAL_1 = 7
+CHAT_ID_2 = "chatIDTwo"
+MESSAGE_2 = "message two"
+INTERVAL_2 = 2
 
-async def test_fake_today():
+ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, 7, MESSAGE_1, 1) ]
+TWO_REMINDERS = [ 
+    Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1),
+    Reminder(CHAT_ID_2, TODAY, INTERVAL_2, MESSAGE_2, 2),
+]
+
+logger = logging.getLogger("welcomebot")
+
+@pytest.fixture
+def store():
+    fake_store = SimpleNamespace()
+    fake_store.get_due_reminders = MagicMock(return_value=[])
+    fake_store.repost_reminder = MagicMock()
+    return fake_store
+
+
+@pytest.fixture
+def bot():
+    fake_bot = SimpleNamespace()
+    fake_bot.send = AsyncMock()
+    return fake_bot
+
+
+@pytest.fixture
+def reminders(bot, store):
+    return Reminders(logger, bot, store)
+
+
+async def test_empty_process(reminders):
+    await reminders.process_queue()
+    reminders.store.get_due_reminders.assert_called_once()
+    reminders.store.repost_reminder.assert_not_called()
+    reminders.bot.send.assert_not_called()
+
+
+async def test_one_process(reminders):
+    reminders.store.get_due_reminders = MagicMock(return_value=ONE_REMINDER)
+    await reminders.process_queue()
+    reminders.store.get_due_reminders.assert_called_once()
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
+    reminders.store.repost_reminder.assert_called_once_with(1)
+
+
+async def test_two_process(reminders):
+    reminders.store.get_due_reminders = MagicMock(return_value=TWO_REMINDERS)
+    await reminders.process_queue()
+    reminders.store.get_due_reminders.assert_called_once()
+    reminders.bot.send.assert_has_calls([
+        call(CHAT_ID_1, MESSAGE_1),
+        call(CHAT_ID_2, MESSAGE_2)
+    ])
+    reminders.store.repost_reminder.assert_has_calls([
+        call(1),
+        call(2)
+    ])
+
+
+def test_real_today():
+    assert today() > 2461000 # safely in the past
+
+
+def test_fake_today():
     now = datetime(*DATE)
     dt = SimpleNamespace()
     dt.now = MagicMock(return_value=now)
     assert today(dt) == TODAY
 
-async def test_decode():
-    assert to_ymd(TODAY) == '2026-05-25'
-    assert to_ymd(TODAY - 1) == '2026-05-24'
+
+def test_decode():
+    assert to_ymd(TODAY) == '2026-05-26'
+    assert to_ymd(TODAY - 1) == '2026-05-25'

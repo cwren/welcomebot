@@ -2,7 +2,8 @@ from importlib.metadata import version
 import hashlib
 
 from signalbot import Command, Context, MessageType
-from . import util
+from .util import update_group
+from .periodic import to_ymd, today, Reminder
 
 HELP_MESSAGE = """you can use these commands:
   list_groups: return enumerated known group names
@@ -10,6 +11,10 @@ HELP_MESSAGE = """you can use these commands:
   get_motd GROUP
   set_tos <newline> message
   get_tos
+  list_reminders
+  set_reminder GROUP periodicity <newline> message
+  get_reminder REMINDER_ID
+  delete_reminder REMINDER_ID
   who: list members of cnc chat
   get_group_id GROUP: get the internal Signal ID of a group
   version: report the bot version number
@@ -29,8 +34,14 @@ class CNCCommand(Command):
 
     def _get_group_info(self):
         group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in self.bot.groups ]
-        group_info = { hashlib.sha256(group['internal_id'].encode()).hexdigest()[0:5].upper() : group for group in group_info }
+        for group in group_info:
+            group['tag'] = hashlib.sha256(group['internal_id'].encode()).hexdigest()[0:5].upper()
+        group_info = { group['tag'] : group for group in group_info }
         return group_info
+    
+    def _get_group_lookup(self):
+        group_info = self._get_group_info()
+        return { group['internal_id'] : group for _, group in group_info.items() }
                              
     async def handle(self, context: Context) -> None:
         if context.message.group != self.cnc:  # guard against DMs
@@ -38,7 +49,7 @@ class CNCCommand(Command):
             return
         
         if not self.store.has_group(context.message.group):
-            await util.update_group(self.logger, self.bot, context, self.store)
+            await update_group(self.logger, self.bot, context, self.store)
 
         if context.message.type == MessageType.DATA_MESSAGE:
             self.logger.info("cnc processing data message")
@@ -158,6 +169,88 @@ class CNCCommand(Command):
                         reply = f'tos is: \n{tos}'
                     else:
                         reply = 'there is no tos for this bot'
+                    await context.send(reply)
+                    return
+
+                case 'list_reminders':
+                    self.logger.info("cnc processing list_reminders request")
+
+                    reminders = self.store.get_all_reminders()
+                    if reminders:
+                        gl = self._get_group_lookup()
+                        reply = 'reminders:\n'
+                        reply += '\n'.join(
+                            [ f'ID {r.id}: \n\tgroup: {gl[r.group_id]['name']}\n\tnext post: {to_ymd(r.next)}\n\tevery {r.interval}d' for r in reminders ]
+                        )
+                    else:
+                        reply = 'there are no reminders'
+                    await context.send(reply)
+                    return
+                
+                case 'set_reminder':
+                    self.logger.info("cnc processing set_reminder request") 
+                    # set_reminder GROUP periodicity <newline> message
+                    if len(ops) < 3:
+                        reply = 'unrecognized set_reminder syntax'
+                        await context.send(reply)
+                        return
+                    
+                    group_info = self._get_group_info()                   
+                    group_tag = ops[1]
+
+                    if group_tag not in group_info:
+                        reply = f'invalid group index: {group_tag}'
+                        await context.send(reply)
+                        return
+                    
+                    group = group_info[group_tag]
+                    id = self.store.put_reminder(Reminder(group['internal_id'], today(), ops[2], parts[1]))
+                    if id:
+                        reply = f'reminder set: {id}'
+                    else:
+                        reply = 'fail!'
+                    await context.send(reply)
+                    return
+                
+                case 'get_reminder':
+                    self.logger.info("cnc processing get_reminder request")
+                    if len(ops) < 2:
+                        reply = 'unrecognized get_reminder syntax'
+                        await context.send(reply)
+                        return
+                    id = None
+                    try:
+                        id = int(ops[1])
+                    except (ValueError, TypeError):
+                        reply = f'get_reminder takes an integer index: {ops[1]}'
+                        await context.send(reply)
+                        return
+                    reminders = self.store.get_all_reminders()
+                    reminders = [ reminder for reminder in reminders if reminder.id == id ]
+                    if reminders:
+                        reply = '\n'.join(
+                            [ f'ID {r.id}:\n{r.message}' for r in reminders ]
+                        )
+                    else:
+                        reply = f'could not find reminder {id}'
+                    await context.send(reply)
+                    return
+                
+                case 'delete_reminder':
+                    self.logger.info("cnc processing delete_reminder request")
+                    if len(ops) < 2:
+                        reply = 'unrecognized delete_reminder syntax'
+                        await context.send(reply)
+                        return
+                    id = None
+                    try:
+                        id = int(ops[1])
+                    except (ValueError, TypeError):
+                        reply = f'delete_reminder takes an integer index: {ops[1]}'
+                        await context.send(reply)
+                        return
+                    reminders = self.store.delete_reminder(id)
+                    reply = f'deleted reminder {id}'
                     await context.send(reply)
                     return
 
