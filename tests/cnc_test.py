@@ -49,28 +49,33 @@ def context():
     context.send = AsyncMock(return_value=3)
     return context
 
+@pytest.fixture
+def store():
+    fake_store = SimpleNamespace()
+    fake_store.list_groups = MagicMock(return_value=GROUPS)
+    fake_store.get_members = MagicMock(return_value=MANAGERS)
+    fake_store.put_members = MagicMock()
+    fake_store.retain_only = MagicMock()
+    fake_store.put_motd = MagicMock()
+    fake_store.get_motd = MagicMock()
+    fake_store.has_group = MagicMock(return_value=True)
+    return fake_store
 
 @pytest.fixture
-def cnc():
-    fake_groups = SimpleNamespace()
-    fake_groups.list_groups = MagicMock(return_value=GROUPS)
-    fake_groups.get_members = MagicMock(return_value=MANAGERS)
-    fake_groups.put_members = MagicMock()
-    fake_groups.retain_only = MagicMock()
-    fake_groups.put_motd = MagicMock()
-    fake_groups.get_motd = MagicMock()
-    fake_groups.has_group = MagicMock(return_value=True)
-
+def bot():
     fake_bot = SimpleNamespace()
     fake_bot.get_group = MagicMock(side_effect=GROUPS)
     fake_bot.groups = GROUPS
+    return fake_bot
 
+@pytest.fixture
+def cnc(bot, store):
     cnc = CNCCommand(
         logger,
         MANAGERS,
         CNC_ID,
-        fake_groups)
-    cnc.bot = fake_bot
+        store)
+    cnc.bot = bot
     return cnc
 
 

@@ -55,26 +55,33 @@ def context():
 
 
 @pytest.fixture
-def motd():
-    fake_groups = SimpleNamespace()
-    fake_groups.list = MagicMock(return_value=GROUPS)
-    fake_groups.get_members = MagicMock(return_value=SOCIAL_CHAT_MEMBERS)
-    fake_groups.put_members = MagicMock()
-    fake_groups.retain_only = MagicMock()
-    fake_groups.get_motd = MagicMock(return_value=MOTD)
-    fake_groups.has_group = MagicMock(return_value=True)
+def store():
+    fake_store = SimpleNamespace()
+    fake_store.list_groups = MagicMock(return_value=GROUPS)
+    fake_store.get_members = MagicMock(return_value=SOCIAL_CHAT_MEMBERS)
+    fake_store.put_members = MagicMock()
+    fake_store.retain_only = MagicMock()
+    fake_store.get_motd = MagicMock(return_value=MOTD)
+    fake_store.has_group = MagicMock(return_value=True)
+    return fake_store
 
+@pytest.fixture
+def bot():
     fake_bot = SimpleNamespace()
     fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
     fake_bot.groups = GROUPS
     fake_bot.config = SimpleNamespace()
     fake_bot.config.phone_number = MY_NUMBER
+    return fake_bot
 
+
+@pytest.fixture
+def motd(bot, store):
     motd = MotDCommand(
         logger,
         CNC_CHAT_ID,
-        fake_groups)
-    motd.bot = fake_bot
+        store)
+    motd.bot = bot
     return motd
 
 
