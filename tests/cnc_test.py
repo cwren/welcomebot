@@ -310,6 +310,32 @@ async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert f'reminder set: {REMINDER_1.id}' == context.send.call_args.args[0]
 
 
+async def test_set_reminder_in_past(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} -10 {REMINDER_1.interval}\n{TOS}'
+
+    await cnc.handle(context)
+
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'negative' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_neg_interval(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 -10 \n{TOS}'
+
+    await cnc.handle(context)
+
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'negative' in context.send.call_args.args[0]
+
+
 async def test_get_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID

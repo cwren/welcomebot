@@ -12,7 +12,7 @@ HELP_MESSAGE = """you can use these commands:
   set_tos <newline> message
   get_tos
   list_reminders
-  set_reminder GROUP periodicity <newline> message
+  set_reminder GROUP delay interval <newline> message
   get_reminder REMINDER_ID
   delete_reminder REMINDER_ID
   who: list members of cnc chat
@@ -23,6 +23,8 @@ HELP_MESSAGE = """you can use these commands:
   motd is the message posted in a specific group when a new member joins.
 
   tos is the message posted in response to DMs or mentions of the bot.
+
+  reminder interval is measured in days, delay of 0 is today
   """
 
 
@@ -212,15 +214,25 @@ class CNCCommand(Command):
                         await context.send(reply)
                         return
                     
+                    if delay < 0:
+                        reply = f'set_reminder date cannot be negative: {ops[2]}'
+                        await context.send(reply)
+                        return
+                    
                     try:
-                        period = int(ops[3])
+                        interval = int(ops[3])
                     except (ValueError, TypeError):
-                        reply = f'set_reminder takes an integer delay: {ops[3]}'
+                        reply = f'set_reminder takes an integer interval: {ops[3]}'
+                        await context.send(reply)
+                        return
+                    
+                    if interval < 0:
+                        reply = f'set_reminder interval cannot be negative: {ops[2]}'
                         await context.send(reply)
                         return
                     
                     group = group_info[group_tag]
-                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, period, parts[1]))
+                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, interval, parts[1]))
                     if id:
                         reply = f'reminder set: {id}'
                     else:
