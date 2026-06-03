@@ -21,6 +21,11 @@ TWO_REMINDERS = [
     Reminder(CHAT_ID_2, TODAY, INTERVAL_2, MESSAGE_2, 2),
 ]
 ONE_SHOT = [ Reminder(CHAT_ID_1, TODAY, 0, MESSAGE_1, 1) ]
+# store should return these ordered by due date ascending
+OVERLAPPING_REMINDERS = [ 
+    Reminder(CHAT_ID_1, TODAY - 1, INTERVAL_1, MESSAGE_1, 1),
+    Reminder(CHAT_ID_1, TODAY, INTERVAL_2, MESSAGE_2, 2), 
+]
 
 logger = logging.getLogger("welcomebot")
 
@@ -47,6 +52,7 @@ def reminders(bot, store):
 
 async def test_empty_process(reminders):
     await reminders.process_queue()
+    
     reminders.store.get_due_reminders.assert_called_once()
     reminders.store.repost_reminder.assert_not_called()
     reminders.bot.send.assert_not_called()
@@ -54,15 +60,20 @@ async def test_empty_process(reminders):
 
 async def test_one_process(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=ONE_REMINDER)
+
     await reminders.process_queue()
+    
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
     reminders.store.repost_reminder.assert_called_once_with(1)
     reminders.store.delete_reminder.assert_not_called()
 
+
 async def test_one_shot(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=ONE_SHOT)
+
     await reminders.process_queue()
+    
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
     reminders.store.repost_reminder.assert_not_called()
@@ -71,7 +82,9 @@ async def test_one_shot(reminders):
 
 async def test_two_process(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=TWO_REMINDERS)
+
     await reminders.process_queue()
+    
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_has_calls([
         call(CHAT_ID_1, MESSAGE_1),
@@ -81,6 +94,16 @@ async def test_two_process(reminders):
         call(1),
         call(2)
     ])
+
+
+async def test_overlapping(reminders):
+    reminders.store.get_due_reminders = MagicMock(return_value=OVERLAPPING_REMINDERS)
+    
+    await reminders.process_queue()
+
+    # the second message to the same group should be delayed to tomorrow
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
+    reminders.store.repost_reminder.assert_called_once_with(1)
 
 
 def test_real_today():

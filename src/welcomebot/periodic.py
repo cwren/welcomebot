@@ -42,12 +42,17 @@ class Reminders():
     async def process_queue(self):
         self.logger.info('checking for reminders')
         reminders = self.store.get_due_reminders()
+        recipients = set()
         promises = []
         for reminder in reminders:
-            self.logger.info(f'sending reminder {reminder.id}')
-            promises.append(self.bot.send(reminder.group_id, reminder.message))
-            if reminder.interval:
-                self.store.repost_reminder(reminder.id)
+            if reminder.group_id in recipients:
+                self.logger.info(f'skipping reminder {reminder.id} in group {reminder.group_id}')
             else:
-                self.store.delete_reminder(reminder.id)
+                self.logger.info(f'sending reminder ß{reminder.id} to group {reminder.group_id}')
+                recipients.add(reminder.group_id)
+                promises.append(self.bot.send(reminder.group_id, reminder.message))
+                if reminder.interval:
+                    self.store.repost_reminder(reminder.id)
+                else:
+                    self.store.delete_reminder(reminder.id)
         return asyncio.gather(*promises)       
