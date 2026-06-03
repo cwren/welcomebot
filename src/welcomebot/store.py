@@ -157,7 +157,7 @@ class BotStore():
 
     def get_due_reminders(self):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT id, group_id, next, interval, message FROM reminder WHERE next <= {self.cal.today()}')
+        res = cur.execute(f'SELECT id, group_id, next, interval, message FROM reminder WHERE next <= {self.cal.today()} ORDER BY 3 ASC')
         rows = res.fetchall()
         cur.close()
         reminders = [ Reminder(row[1], row[2], row[3], row[4], row[0]) for row in rows ]

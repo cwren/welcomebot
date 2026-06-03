@@ -152,16 +152,14 @@ async def test_delete_null_reminder(store):
 
 async def test_get_due_reminders(store):
     message = 'Please brush your teeth 🪥'
-    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
-    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, message))
-    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, message))
+    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 7, message))
+    store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 14, message))
+    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 30, message))
 
     rows = store.get_due_reminders() 
     assert len(rows) == 2
     due_ids = [ row.id for row in rows ]
-    assert id1 in due_ids
-    assert id2 in due_ids
-    assert id3 not in due_ids
+    assert due_ids == [id3, id1]
 
 async def test_update_reminders(store):
     message = 'Please brush your teeth 🪥'
