@@ -3,7 +3,7 @@ import hashlib
 
 from signalbot import Command, Context, MessageType
 from .util import update_group
-from .periodic import to_ymd, today, Reminder
+from .periodic import Calendar, Reminder
 
 HELP_MESSAGE = """you can use these commands:
   list_groups: return enumerated known group names
@@ -17,6 +17,7 @@ HELP_MESSAGE = """you can use these commands:
   delete_reminder REMINDER_ID
   who: list members of cnc chat
   get_group_id GROUP: get the internal Signal ID of a group
+  today: show today's julian date
   version: report the bot version number
 
   motd is the message posted in a specific group when a new member joins.
@@ -26,11 +27,12 @@ HELP_MESSAGE = """you can use these commands:
 
 
 class CNCCommand(Command):
-    def __init__(self, logger, managers, cnc, store):
+    def __init__(self, logger, managers, cnc, store, cal=Calendar()):
         self.logger = logger
         self.managers = managers
         self.cnc = cnc
         self.store = store
+        self.cal = cal
 
     def _get_group_info(self):
         group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in self.bot.groups ]
@@ -58,7 +60,7 @@ class CNCCommand(Command):
                 return
             
             parts = context.message.text.split('\n', maxsplit=1)
-            ops = parts[0].split(maxsplit=2)
+            ops = parts[0].split(maxsplit=3)
             
             match(ops[0].lower()):
                 case 'help':
@@ -180,7 +182,7 @@ class CNCCommand(Command):
                         gl = self._get_group_lookup()
                         reply = 'reminders:\n'
                         reply += '\n'.join(
-                            [ f'ID {r.id}: \n\tgroup: {gl[r.group_id]['name']}\n\tnext post: {to_ymd(r.next)}\n\tevery {r.interval}d' for r in reminders ]
+                            [ f'ID {r.id}: \n\tgroup: {gl[r.group_id]['name']}\n\tnext post: {self.cal.to_ymd(r.next)}\n\tevery {r.interval}d' for r in reminders ]
                         )
                     else:
                         reply = 'there are no reminders'
@@ -189,8 +191,8 @@ class CNCCommand(Command):
                 
                 case 'set_reminder':
                     self.logger.info("cnc processing set_reminder request") 
-                    # set_reminder GROUP periodicity <newline> message
-                    if len(ops) < 3:
+                    # set_reminder GROUP delay periodicity <newline> message
+                    if len(ops) < 4:
                         reply = 'unrecognized set_reminder syntax'
                         await context.send(reply)
                         return
@@ -203,8 +205,22 @@ class CNCCommand(Command):
                         await context.send(reply)
                         return
                     
+                    try:
+                        delay = int(ops[2])
+                    except (ValueError, TypeError):
+                        reply = f'set_reminder takes an integer delay: {ops[2]}'
+                        await context.send(reply)
+                        return
+                    
+                    try:
+                        period = int(ops[3])
+                    except (ValueError, TypeError):
+                        reply = f'set_reminder takes an integer delay: {ops[3]}'
+                        await context.send(reply)
+                        return
+                    
                     group = group_info[group_tag]
-                    id = self.store.put_reminder(Reminder(group['internal_id'], today(), ops[2], parts[1]))
+                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, period, parts[1]))
                     if id:
                         reply = f'reminder set: {id}'
                     else:
@@ -225,12 +241,9 @@ class CNCCommand(Command):
                         reply = f'get_reminder takes an integer index: {ops[1]}'
                         await context.send(reply)
                         return
-                    reminders = self.store.get_all_reminders()
-                    reminders = [ reminder for reminder in reminders if reminder.id == id ]
-                    if reminders:
-                        reply = '\n'.join(
-                            [ f'ID {r.id}:\n{r.message}' for r in reminders ]
-                        )
+                    reminder = self.store.get_reminder(id)
+                    if reminder:
+                        reply = f'ID {reminder.id}:\n{reminder.message}'
                     else:
                         reply = f'could not find reminder {id}'
                     await context.send(reply)
@@ -249,7 +262,7 @@ class CNCCommand(Command):
                         reply = f'delete_reminder takes an integer index: {ops[1]}'
                         await context.send(reply)
                         return
-                    reminders = self.store.delete_reminder(id)
+                    self.store.delete_reminder(id)
                     reply = f'deleted reminder {id}'
                     await context.send(reply)
                     return
@@ -259,6 +272,12 @@ class CNCCommand(Command):
                     members = self.bot.get_group(context.message.group)['members']
                     reply = 'who is in this chat:\n'
                     reply += '\n'.join([ f'{m}' for m in members ])
+                    await context.send(reply)
+                    return
+
+                case 'today':
+                    self.logger.info("cnc processing today request")
+                    reply = f'today is day {self.cal.today()}'
                     await context.send(reply)
                     return
 

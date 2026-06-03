@@ -1,12 +1,12 @@
 
 import sqlite3
 
-from .periodic import today, Reminder
+from .periodic import Calendar, Reminder
 
 class BotStore():
-    def __init__(self, logger, db="bot_memory.db", today=today):
+    def __init__(self, logger, db="bot_memory.db", cal=Calendar()):
         self.logger = logger
-        self.today = today
+        self.cal = cal
         self.logger.info(f'store connecting to {db}')
         self.con = sqlite3.connect(db)
         cur = self.con.cursor()
@@ -140,6 +140,13 @@ class BotStore():
         cur.close()
         return id
 
+    def get_reminder(self, id):
+        cur = self.con.cursor()
+        res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder WHERE id = ?', (id,))
+        row = res.fetchone()
+        cur.close()
+        return Reminder(row[1], row[2], row[3], row[4], id=row[0]) if row else None
+
     def get_all_reminders(self):
         cur = self.con.cursor()
         res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder')
@@ -150,7 +157,7 @@ class BotStore():
 
     def get_due_reminders(self):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT id, group_id, next, interval, message FROM reminder WHERE next <= {self.today()}')
+        res = cur.execute(f'SELECT id, group_id, next, interval, message FROM reminder WHERE next <= {self.cal.today()}')
         rows = res.fetchall()
         cur.close()
         reminders = [ Reminder(row[1], row[2], row[3], row[4], row[0]) for row in rows ]
@@ -164,10 +171,10 @@ class BotStore():
 
     def repost_reminder(self, id):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT interval FROM reminder WHERE id = {id}')
+        res = cur.execute(f'SELECT next, interval FROM reminder WHERE id = {id}')
         row = res.fetchone()
         cur.close()
-        next = self.today() + row[0]
+        next = row[0] + row[1]
         cur = self.con.cursor()
         cur.execute(f'UPDATE reminder SET next = {next} WHERE id = {id}')
         self.con.commit()

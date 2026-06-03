@@ -1,9 +1,11 @@
+from datetime import datetime, UTC
 import logging
 import pytest
 import tempfile
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from welcomebot import BotStore, Reminder
+from welcomebot import BotStore, Calendar, Reminder
 
 
 USER_1 = "user1"
@@ -11,8 +13,8 @@ USER_2 = "user2"
 CNC_CHAT = "cncchatID"
 SOCIAL_CHAT = "socialchatID"
 
-DATE = [ 2026, 5, 26, 16, 47, 10, 1, 146, -1 ]
-TODAY = 2461186
+DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
+TODAY = 2461187
 TOMORROW = TODAY + 1
 YESTERDAY = TODAY - 1
 
@@ -20,13 +22,16 @@ logger = logging.getLogger("welcomebot")
 
 
 @pytest.fixture
-def today():
-    return MagicMock(return_value=TODAY)
+def cal():
+    now = datetime(*DATE)
+    dt = SimpleNamespace()
+    dt.now = MagicMock(return_value=now)
+    return Calendar(dt)
 
 @pytest.fixture
-def store(today):
+def store(cal):
     with tempfile.NamedTemporaryFile(mode='w+t', delete=True) as temp_file:
-        yield BotStore(logger, temp_file.name, today=today)
+        yield BotStore(logger, temp_file.name, cal=cal)
 
 
 async def test_null_members(store):
@@ -88,6 +93,25 @@ async def test_create_one_reminder_tomorrow(store):
     
     assert not store.get_due_reminders()
 
+
+async def test_get_reminder(store):
+    message = 'Please brush your teeth 🪥'
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    
+    reminder = store.get_reminder(id) 
+    assert reminder
+    assert reminder.id == id
+    assert reminder.group_id == SOCIAL_CHAT
+    assert reminder.next == TOMORROW
+    assert reminder.interval== 7
+    assert reminder.message == message
+
+
+async def test_get_null_reminder(store):
+    reminder = store.get_reminder(1000) 
+    assert not reminder
+
+
 async def test_create_one_reminder_yesterday(store):
     message = 'Please brush your teeth 🪥'
     id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
@@ -109,6 +133,21 @@ async def test_delete_reminder(store):
     remaining_ids = [ row.id for row in rows ]
     assert id1 in remaining_ids
     assert id2 not in remaining_ids
+    assert id3 in remaining_ids
+
+async def test_delete_null_reminder(store):
+    message = 'Please brush your teeth 🪥'
+    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
+    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, message))
+    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, message))
+    
+    store.delete_reminder(1000)
+
+    rows = store.get_all_reminders() 
+    assert len(rows) == 3
+    remaining_ids = [ row.id for row in rows ]
+    assert id1 in remaining_ids
+    assert id2 in remaining_ids
     assert id3 in remaining_ids
 
 async def test_get_due_reminders(store):
@@ -134,4 +173,4 @@ async def test_update_reminders(store):
     rows = store.get_all_reminders() 
     assert len(rows) == 1
     assert rows[0].id == id
-    assert rows[0].next == TODAY + rows[0].interval # not YESTERDAY, because we missed it and posted today
+    assert rows[0].next == YESTERDAY + 7

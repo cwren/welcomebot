@@ -1,3 +1,4 @@
+from datetime import datetime, UTC
 from importlib.metadata import version
 import logging
 from types import SimpleNamespace
@@ -5,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from signalbot import MessageType
-from welcomebot import CNCCommand
+from welcomebot import Calendar, CNCCommand, Reminder
 
 USER = "user 1"
 MANAGER_1 = "user 2"
@@ -39,8 +40,21 @@ with some emoji:  👋👋"""
 
 TOS = """I'm a little teapot"""
 
+DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
+TODAY = 2461187
+REMINDER_1_DATE = '2026-05-26'
+REMINDER_1 = Reminder(CHAT_1_ID, TODAY, 7, TOS, id=1)
+REMINDER_2_DATE = '2026-05-31'
+REMINDER_2 = Reminder(CHAT_2_ID, TODAY + 5, 28, TOS, id=2)
+
 logger = logging.getLogger("welcomebot")
 
+
+@pytest.fixture
+def cal():
+    dt = SimpleNamespace()
+    dt.now = MagicMock(return_value=datetime(*DATE))
+    return Calendar(dt=dt)
 
 @pytest.fixture
 def context():
@@ -59,6 +73,10 @@ def store():
     fake_store.put_motd = MagicMock()
     fake_store.get_motd = MagicMock()
     fake_store.has_group = MagicMock(return_value=True)
+    fake_store.put_reminder = MagicMock(return_value=REMINDER_1.id)
+    fake_store.get_reminder = MagicMock(return_value=REMINDER_1)
+    fake_store.get_all_reminders = MagicMock(return_value=[REMINDER_1, REMINDER_2])
+    fake_store.delete_reminder = MagicMock()
     return fake_store
 
 @pytest.fixture
@@ -69,12 +87,13 @@ def bot():
     return fake_bot
 
 @pytest.fixture
-def cnc(bot, store):
+def cnc(bot, store, cal):
     cnc = CNCCommand(
         logger,
         MANAGERS,
         CNC_ID,
-        store)
+        store,
+        cal)
     cnc.bot = bot
     return cnc
 
@@ -274,6 +293,64 @@ async def test_get_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     cnc.store.get_motd.assert_called_once_with('TOS')
 
 
+async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS}'
+
+    await cnc.handle(context)
+    
+    assert len(cnc.store.put_reminder.call_args.args) == 1
+    cnc.store.put_reminder.assert_called_once()
+    actual = cnc.store.put_reminder.call_args.args[0]
+    assert REMINDER_1 == actual
+
+    assert len(context.send.call_args.args) == 1
+    assert f'reminder set: {REMINDER_1.id}' == context.send.call_args.args[0]
+
+
+async def test_get_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_reminder {REMINDER_1.id}'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert str(REMINDER_1.id) in  context.send.call_args.args[0]
+    assert REMINDER_1.message in  context.send.call_args.args[0]
+
+
+async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = 'list_reminders'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert str(REMINDER_1.id) in  context.send.call_args.args[0]
+    assert CHAT_1_NAME in  context.send.call_args.args[0]
+    assert REMINDER_1_DATE in  context.send.call_args.args[0]
+    assert str(REMINDER_2.id) in  context.send.call_args.args[0]
+    assert CHAT_2_NAME in  context.send.call_args.args[0]
+    assert REMINDER_2_DATE in  context.send.call_args.args[0]
+
+
+async def test_delete_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'delete_reminder {REMINDER_2.id}'
+
+    await cnc.handle(context)
+
+    cnc.store.delete_reminder.assert_called_once_with(REMINDER_2.id) 
+
+
 async def test_who(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
@@ -297,3 +374,15 @@ async def test_version(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     
     assert len(context.send.call_args.args) == 1
     assert version('welcomebot') in context.send.call_args.args[0]
+
+
+async def test_today(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'today'
+
+    await cnc.handle(context)
+    
+    assert len(context.send.call_args.args) == 1
+    assert str(TODAY) in context.send.call_args.args[0]

@@ -4,7 +4,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call
 
-from welcomebot import Reminder, Reminders, to_ymd, today
+from welcomebot import Calendar, Reminder, Reminders
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
@@ -73,16 +73,19 @@ async def test_two_process(reminders):
 
 
 def test_real_today():
-    assert today() > 2461000 # safely in the past
+    cal = Calendar()
+    assert cal.today() > 2461000 # safely in the past
 
 
 def test_fake_today():
     now = datetime(*DATE)
     dt = SimpleNamespace()
     dt.now = MagicMock(return_value=now)
-    assert today(dt) == TODAY
+    cal = Calendar(dt)
+    assert cal.today() == TODAY
 
 
 def test_decode():
-    assert to_ymd(TODAY) == '2026-05-26'
-    assert to_ymd(TODAY - 1) == '2026-05-25'
+    cal = Calendar()
+    assert cal.to_ymd(TODAY) == '2026-05-26'
+    assert cal.to_ymd(TODAY - 1) == '2026-05-25'

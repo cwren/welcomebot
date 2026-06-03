@@ -2,11 +2,17 @@ import asyncio
 from datetime import datetime 
 import juliandate as jd
 
-def today(dt=datetime):
-    return int(jd.from_gregorian(*list(dt.now().timetuple())[0:3], 12))
 
-def to_ymd(julian_date):
-    return datetime(*jd.to_gregorian(julian_date)).strftime('%Y-%m-%d')
+class Calendar():
+    def __init__(self, dt=datetime):
+        self.dt = dt
+    
+    def today(self):
+        return int(jd.from_gregorian(*list(self.dt.now().timetuple())[0:3], 12))
+
+    def to_ymd(self, julian_date):
+        return datetime(*jd.to_gregorian(julian_date)).strftime('%Y-%m-%d')
+
 
 class Reminder():
     def __init__(self, group_id, next, interval, message, id=None):
@@ -15,6 +21,16 @@ class Reminder():
         self.next = next
         self.interval = interval
         self.message = message
+
+    def __eq__(self, other):
+        if not isinstance(other, Reminder):
+            return NotImplemented
+        return ((self.id == other.id or not self.id or not other.id) and
+                self.group_id == other.group_id and
+                self.next == other.next and
+                self.interval == other.interval and
+                self.message == other.message
+        )
 
     
 class Reminders():
