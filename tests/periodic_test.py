@@ -20,6 +20,7 @@ TWO_REMINDERS = [
     Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1),
     Reminder(CHAT_ID_2, TODAY, INTERVAL_2, MESSAGE_2, 2),
 ]
+ONE_SHOT = [ Reminder(CHAT_ID_1, TODAY, 0, MESSAGE_1, 1) ]
 
 logger = logging.getLogger("welcomebot")
 
@@ -28,6 +29,7 @@ def store():
     fake_store = SimpleNamespace()
     fake_store.get_due_reminders = MagicMock(return_value=[])
     fake_store.repost_reminder = MagicMock()
+    fake_store.delete_reminder = MagicMock()
     return fake_store
 
 
@@ -56,6 +58,15 @@ async def test_one_process(reminders):
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
     reminders.store.repost_reminder.assert_called_once_with(1)
+    reminders.store.delete_reminder.assert_not_called()
+
+async def test_one_shot(reminders):
+    reminders.store.get_due_reminders = MagicMock(return_value=ONE_SHOT)
+    await reminders.process_queue()
+    reminders.store.get_due_reminders.assert_called_once()
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
+    reminders.store.repost_reminder.assert_not_called()
+    reminders.store.delete_reminder.assert_called_once_with(1)
 
 
 async def test_two_process(reminders):

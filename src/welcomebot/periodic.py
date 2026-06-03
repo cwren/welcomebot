@@ -46,5 +46,8 @@ class Reminders():
         for reminder in reminders:
             self.logger.info(f'sending reminder {reminder.id}')
             promises.append(self.bot.send(reminder.group_id, reminder.message))
-            self.store.repost_reminder(reminder.id)
+            if reminder.interval:
+                self.store.repost_reminder(reminder.id)
+            else:
+                self.store.delete_reminder(reminder.id)
         return asyncio.gather(*promises)       
