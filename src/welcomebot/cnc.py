@@ -15,6 +15,7 @@ HELP_MESSAGE = """you can use these commands:
   set_reminder GROUP delay interval <newline> message
   get_reminder REMINDER_ID
   delete_reminder REMINDER_ID
+  run_reminder_queue
   who: list members of cnc chat
   get_group_id GROUP: get the internal Signal ID of a group
   today: show today's julian date
@@ -29,11 +30,12 @@ HELP_MESSAGE = """you can use these commands:
 
 
 class CNCCommand(Command):
-    def __init__(self, logger, managers, cnc, store, cal=Calendar()):
+    def __init__(self, logger, managers, cnc, store, reminders, cal=Calendar()):
         self.logger = logger
         self.managers = managers
         self.cnc = cnc
         self.store = store
+        self.reminders = reminders
         self.cal = cal
 
     def _get_group_info(self):
@@ -276,6 +278,13 @@ class CNCCommand(Command):
                         return
                     self.store.delete_reminder(id)
                     reply = f'deleted reminder {id}'
+                    await context.send(reply)
+                    return
+                
+                case 'run_reminder_queue':
+                    self.logger.info("cnc processing run_reminder_queue request")
+                    await self.reminders.process_queue()
+                    reply = 'reminder queue has been run'
                     await context.send(reply)
                     return
 

@@ -87,12 +87,19 @@ def bot():
     return fake_bot
 
 @pytest.fixture
-def cnc(bot, store, cal):
+def reminders():
+    fake_reminders = SimpleNamespace()
+    fake_reminders.process_queue = AsyncMock()
+    return fake_reminders
+
+@pytest.fixture
+def cnc(bot, store, reminders, cal):
     cnc = CNCCommand(
         logger,
         MANAGERS,
         CNC_ID,
         store,
+        reminders,
         cal)
     cnc.bot = bot
     return cnc
@@ -412,3 +419,14 @@ async def test_today(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNames
     
     assert len(context.send.call_args.args) == 1
     assert str(TODAY) in context.send.call_args.args[0]
+
+
+async def test_queue(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'run_reminder_queue'
+
+    await cnc.handle(context)
+    
+    cnc.reminders.process_queue.assert_called_once()
