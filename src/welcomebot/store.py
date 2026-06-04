@@ -169,12 +169,7 @@ class BotStore():
         self.con.commit()
         return None
 
-    def repost_reminder(self, id):
-        cur = self.con.cursor()
-        res = cur.execute(f'SELECT next, interval FROM reminder WHERE id = {id}')
-        row = res.fetchone()
-        cur.close()
-        next = row[0] + row[1]
+    def repost_reminder(self, id, next):
         cur = self.con.cursor()
         cur.execute(f'UPDATE reminder SET next = {next} WHERE id = {id}')
         self.con.commit()

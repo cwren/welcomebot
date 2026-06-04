@@ -164,7 +164,7 @@ async def test_get_due_reminders(store):
 async def test_update_reminders(store):
     message = 'Please brush your teeth 🪥'
     id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
-    store.repost_reminder(id)
+    store.repost_reminder(id, YESTERDAY + 7)
     
     assert not store.get_due_reminders()
 

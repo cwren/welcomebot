@@ -34,10 +34,11 @@ class Reminder():
 
     
 class Reminders():
-    def __init__(self, logger, bot, store):
+    def __init__(self, logger, bot, store, cal=Calendar()):
         self.logger = logger
         self.bot = bot
         self.store = store
+        self.cal = cal
     
     async def process_queue(self):
         self.logger.info('checking for reminders')
@@ -52,7 +53,9 @@ class Reminders():
                 recipients.add(reminder.group_id)
                 promises.append(self.bot.send(reminder.group_id, reminder.message))
                 if reminder.interval:
-                    self.store.repost_reminder(reminder.id)
+                    today = self.cal.today()
+                    next = today + reminder.interval - (today - reminder.next) % reminder.interval
+                    self.store.repost_reminder(reminder.id, next)
                 else:
                     self.store.delete_reminder(reminder.id)
         return asyncio.gather(*promises)       

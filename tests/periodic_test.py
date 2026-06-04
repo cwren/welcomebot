@@ -15,7 +15,7 @@ CHAT_ID_2 = "chatIDTwo"
 MESSAGE_2 = "message two"
 INTERVAL_2 = 2
 
-ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, 7, MESSAGE_1, 1) ]
+ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1) ]
 TWO_REMINDERS = [ 
     Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1),
     Reminder(CHAT_ID_2, TODAY, INTERVAL_2, MESSAGE_2, 2),
@@ -26,8 +26,18 @@ OVERLAPPING_REMINDERS = [
     Reminder(CHAT_ID_1, TODAY - 1, INTERVAL_1, MESSAGE_1, 1),
     Reminder(CHAT_ID_1, TODAY, INTERVAL_2, MESSAGE_2, 2), 
 ]
+OLD_REMINDER = [ 
+    Reminder(CHAT_ID_1, TODAY - 30, 7, MESSAGE_1, 1),
+]
 
 logger = logging.getLogger("welcomebot")
+
+@pytest.fixture
+def cal():
+    dt = SimpleNamespace()
+    dt.now = MagicMock(return_value=datetime(*DATE))
+    return Calendar(dt=dt)
+
 
 @pytest.fixture
 def store():
@@ -46,8 +56,8 @@ def bot():
 
 
 @pytest.fixture
-def reminders(bot, store):
-    return Reminders(logger, bot, store)
+def reminders(bot, store, cal):
+    return Reminders(logger, bot, store, cal)
 
 
 async def test_empty_process(reminders):
@@ -65,9 +75,21 @@ async def test_one_process(reminders):
     
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
-    reminders.store.repost_reminder.assert_called_once_with(1)
+    reminders.store.repost_reminder.assert_called_once_with(1, TODAY + INTERVAL_1)
     reminders.store.delete_reminder.assert_not_called()
 
+
+async def test_stale(reminders):
+    reminder = ONE_REMINDER[0]
+    reminder.next -= 30 # 30 days late
+    reminders.store.get_due_reminders = MagicMock(return_value=[reminder])
+
+    await reminders.process_queue()
+    
+    # message is weekly, it's 30 days, or 4 weeks and 2 days late
+    # the next message should go out in 5 days to get back on schedule
+    reminders.store.repost_reminder.assert_called_once_with(1, TODAY + 5)
+    
 
 async def test_one_shot(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=ONE_SHOT)
@@ -91,8 +113,8 @@ async def test_two_process(reminders):
         call(CHAT_ID_2, MESSAGE_2)
     ])
     reminders.store.repost_reminder.assert_has_calls([
-        call(1),
-        call(2)
+        call(1, TODAY + INTERVAL_1),
+        call(2, TODAY + INTERVAL_2)
     ])
 
 
@@ -103,7 +125,7 @@ async def test_overlapping(reminders):
 
     # the second message to the same group should be delayed to tomorrow
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
-    reminders.store.repost_reminder.assert_called_once_with(1)
+    reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + INTERVAL_1)
 
 
 def test_real_today():
