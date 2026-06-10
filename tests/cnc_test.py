@@ -311,6 +311,8 @@ async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert len(cnc.store.put_reminder.call_args.args) == 1
     cnc.store.put_reminder.assert_called_once()
     actual = cnc.store.put_reminder.call_args.args[0]
+    assert actual.id == Reminder.DRAFT 
+    actual.id = REMINDER_1.id 
     assert REMINDER_1 == actual
 
     assert len(context.send.call_args.args) == 1

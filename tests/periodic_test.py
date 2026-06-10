@@ -10,21 +10,26 @@ DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
 CHAT_ID_1 = "chatIDOne"
 MESSAGE_1 = "message one"
-INTERVAL_1 = 7
+WEEKLY = 7
 CHAT_ID_2 = "chatIDTwo"
 MESSAGE_2 = "message two"
-INTERVAL_2 = 2
+MONTHLY = 30
+NO_REPEAT = 0
 
-ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1) ]
+ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1) ]
 TWO_REMINDERS = [ 
-    Reminder(CHAT_ID_1, TODAY, INTERVAL_1, MESSAGE_1, 1),
-    Reminder(CHAT_ID_2, TODAY, INTERVAL_2, MESSAGE_2, 2),
+    Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1),
+    Reminder(CHAT_ID_2, TODAY, MONTHLY, MESSAGE_2, 2),
 ]
 ONE_SHOT = [ Reminder(CHAT_ID_1, TODAY, 0, MESSAGE_1, 1) ]
 # store should return these ordered by due date ascending
 OVERLAPPING_REMINDERS = [ 
-    Reminder(CHAT_ID_1, TODAY - 1, INTERVAL_1, MESSAGE_1, 1),
-    Reminder(CHAT_ID_1, TODAY, INTERVAL_2, MESSAGE_2, 2), 
+    Reminder(CHAT_ID_1, TODAY - 1, WEEKLY, MESSAGE_1, 1),
+    Reminder(CHAT_ID_1, TODAY, MONTHLY, MESSAGE_2, 2), 
+]
+REPEATING_AND_NONREPEATING_REMINDERS = [ 
+    Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1),
+    Reminder(CHAT_ID_1, TODAY, NO_REPEAT, MESSAGE_2, 2), 
 ]
 OLD_REMINDER = [ 
     Reminder(CHAT_ID_1, TODAY - 30, 7, MESSAGE_1, 1),
@@ -75,7 +80,7 @@ async def test_one_process(reminders):
     
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
-    reminders.store.repost_reminder.assert_called_once_with(1, TODAY + INTERVAL_1)
+    reminders.store.repost_reminder.assert_called_once_with(1, TODAY + WEEKLY)
     reminders.store.delete_reminder.assert_not_called()
 
 
@@ -113,8 +118,8 @@ async def test_two_process(reminders):
         call(CHAT_ID_2, MESSAGE_2)
     ])
     reminders.store.repost_reminder.assert_has_calls([
-        call(1, TODAY + INTERVAL_1),
-        call(2, TODAY + INTERVAL_2)
+        call(1, TODAY + WEEKLY),
+        call(2, TODAY + MONTHLY)
     ])
 
 
@@ -125,7 +130,17 @@ async def test_overlapping(reminders):
 
     # the second message to the same group should be delayed to tomorrow
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1)
-    reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + INTERVAL_1)
+    reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + WEEKLY)
+
+
+async def test_prioritize_non_repeating(reminders):
+    reminders.store.get_due_reminders = MagicMock(return_value=REPEATING_AND_NONREPEATING_REMINDERS)
+    
+    await reminders.process_queue()
+
+    # the second message to the same group should be delayed to tomorrow
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_2)
+    reminders.store.repost_reminder.assert_not_called()
 
 
 def test_real_today():
@@ -145,3 +160,30 @@ def test_decode():
     cal = Calendar()
     assert cal.to_ymd(TODAY) == '2026-05-26'
     assert cal.to_ymd(TODAY - 1) == '2026-05-25'
+
+
+def test_order_non_repeating_reminders_first():
+    # non-repeating go before repeating, even if those are overdue 
+    assert Reminder(CHAT_ID_1, TODAY, NO_REPEAT, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_2, 1)
+    assert Reminder(CHAT_ID_1, TODAY, NO_REPEAT, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY - 1, WEEKLY, MESSAGE_2, 1)
+    assert Reminder(CHAT_ID_1, TODAY, NO_REPEAT, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY - 5, MONTHLY, MESSAGE_2, 1)
+    
+
+def test_order_overdue_reminders_first():
+    assert Reminder(CHAT_ID_1, TODAY - 1, WEEKLY, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1)
+    # regardless of how often they are supposed to post
+    assert Reminder(CHAT_ID_1, TODAY - 1, MONTHLY, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1)
+    # non-repeating reminders also sort by most over-due first between them
+    assert Reminder(CHAT_ID_1, TODAY - 1 , NO_REPEAT, MESSAGE_1, 2) < Reminder(CHAT_ID_1, TODAY, NO_REPEAT,  MESSAGE_2, 1)
+
+
+def test_order_draft_reminders_first():
+    assert Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1) < Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 2)
+    assert Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1) > Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1)
+
+
+def test_order_accept_null_messages():
+    try:
+        Reminder(CHAT_ID_1, TODAY, WEEKLY, None, 2) < Reminder(CHAT_ID_1, TODAY, WEEKLY, 'ZZZ', 2)
+    except:
+        pytest.fail()
