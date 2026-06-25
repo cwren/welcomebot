@@ -152,7 +152,7 @@ async def test_ignore_sync(motd, context):
 
     await motd.handle(context)
     
-    assert not context.send.called
+    context.send.assert_not_called()
 
 
 async def test_ignore_empty_dm(motd, context):
@@ -164,7 +164,7 @@ async def test_ignore_empty_dm(motd, context):
 
     await motd.handle(context)
     
-    assert not context.send.called
+    context.send.assert_not_called()
 
 
 async def test_ignore_missing_text(motd, context):
@@ -176,7 +176,7 @@ async def test_ignore_missing_text(motd, context):
 
     await motd.handle(context)
     
-    assert not context.send.called
+    context.send.assert_not_called()
 
 
 async def test_ignore_cnc_data(motd, context):
@@ -187,7 +187,7 @@ async def test_ignore_cnc_data(motd, context):
 
     await motd.handle(context)
 
-    assert not context.send.called
+    context.send.assert_not_called()
 
 
 async def test_ignore_cnc_update(motd, context):
@@ -199,10 +199,10 @@ async def test_ignore_cnc_update(motd, context):
     await motd.handle(context)
 
     # no side effects!
-    assert not context.send.called
-    assert not motd.store.get_members.called
-    assert not motd.store.put_members.called
-    assert not motd.store.retain_only.called
+    context.send.assert_not_called()
+    motd.store.get_members.assert_not_called()
+    motd.store.put_members.assert_not_called()
+    motd.store.retain_only.assert_not_called()
 
 
 async def test_null_update(motd, context):
@@ -212,7 +212,7 @@ async def test_null_update(motd, context):
 
     await motd.handle(context)
 
-    assert not context.send.called
+    context.send.assert_not_called()
 
 
 async def test_new_user(motd, context):
@@ -229,7 +229,7 @@ async def test_new_user(motd, context):
 
     context.send.assert_called_with(MOTD)
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
-    motd.store.retain_only.assert_called_once
+    motd.store.retain_only.assert_called_once()
 
 
 async def test_removed_user(motd, context):
@@ -242,7 +242,7 @@ async def test_removed_user(motd, context):
 
     await motd.handle(context)
 
-    assert not context.send.called
+    context.send.assert_not_called()
 
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, SOCIAL_CHAT_MEMBERS)
     motd.store.retain_only.assert_called_with(GROUP_IDS)
