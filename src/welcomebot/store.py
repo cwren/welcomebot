@@ -58,7 +58,7 @@ class BotStore():
 
     def has_group(self, group):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT group_id FROM group_members where group_id = "{group}" LIMIT 1')
+        res = cur.execute('SELECT group_id FROM group_members where group_id = ? LIMIT 1', (group, ))
         rows = res.fetchone()
         cur.close()
         return not not rows
@@ -85,14 +85,14 @@ class BotStore():
 
     def get_members(self, group):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT member_id FROM group_members WHERE group_id = "{group}"')
+        res = cur.execute('SELECT member_id FROM group_members WHERE group_id = ?', (group, ))
         rows = res.fetchall()
         cur.close()
         return [ row[0] for row in rows ]
 
     def put_members(self, group, members):
         cur = self.con.cursor()
-        cur.execute(f'DELETE FROM group_members WHERE group_id = "{group}"')
+        cur.execute('DELETE FROM group_members WHERE group_id = ?', (group, ))
         self.con.commit()
         rows = [ (group, member) for member in members ]
         cur = self.con.cursor()
@@ -106,14 +106,14 @@ class BotStore():
 
     def get_motd(self, group):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT motd FROM motd WHERE group_id = "{group}"')
+        res = cur.execute('SELECT motd FROM motd WHERE group_id = ?', (group, ))
         row = res.fetchone()
         cur.close()
         return row[0] if row else None
 
     def put_motd(self, group, motd):
         cur = self.con.cursor()
-        cur.execute(f'DELETE FROM motd WHERE group_id = "{group}"')
+        cur.execute('DELETE FROM motd WHERE group_id = ?', (group, ))
         self.con.commit()
         if motd:
             cur = self.con.cursor()
@@ -157,7 +157,7 @@ class BotStore():
 
     def get_due_reminders(self):
         cur = self.con.cursor()
-        res = cur.execute(f'SELECT id, group_id, next, interval, message FROM reminder WHERE next <= {self.cal.today()} ORDER BY 3 ASC')
+        res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder WHERE next <= ? ORDER BY 3 ASC', (self.cal.today(), ))
         rows = res.fetchall()
         cur.close()
         reminders = [ Reminder(row[1], row[2], row[3], row[4], row[0]) for row in rows ]
@@ -165,12 +165,12 @@ class BotStore():
 
     def delete_reminder(self, id):
         cur = self.con.cursor()
-        cur.execute(f'DELETE FROM reminder WHERE id = {id}')
+        cur.execute('DELETE FROM reminder WHERE id = ?', (id, ))
         self.con.commit()
         return None
 
     def repost_reminder(self, id, next):
         cur = self.con.cursor()
-        cur.execute(f'UPDATE reminder SET next = {next} WHERE id = {id}')
+        cur.execute('UPDATE reminder SET next = ? WHERE id = ?', (next, id))
         self.con.commit()
         return next
