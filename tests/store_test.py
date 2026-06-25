@@ -5,7 +5,7 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from welcomebot import BotStore, Calendar, Reminder
+from welcomebot import BotStore, Calendar, Message, Reminder
 
 
 USER_1 = "user1"
@@ -17,6 +17,7 @@ DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
 TOMORROW = TODAY + 1
 YESTERDAY = TODAY - 1
+MESSAGE = Message('Please brush your teeth 🪥')
 
 logger = logging.getLogger("welcomebot")
 
@@ -94,21 +95,21 @@ async def test_null_motd(store):
 
 
 async def test_store_motd(store):
-    message = "This is a the Message of the Day"
+    message = Message("This is a the Message of the Day")
     store.put_motd(SOCIAL_CHAT, message)
     assert store.get_motd(SOCIAL_CHAT) == message
     assert not store.get_motd(CNC_CHAT)
 
 
 async def test_delete_motd(store):
-    message = "This is a the Message of the Day"
+    message = Message("This is a the Message of the Day")
     store.put_motd(SOCIAL_CHAT, message)
     store.put_motd(SOCIAL_CHAT, None)
     assert not store.get_motd(SOCIAL_CHAT)
 
 
 async def test_store_motd_with_special_characters(store):
-    message = 'This is a the "Message of the Day" 👋👋 '
+    message = Message('This is a the "Message of the Day" 👋👋 ')
     store.put_motd(SOCIAL_CHAT, message)
     assert store.get_motd(SOCIAL_CHAT) == message
     
@@ -124,8 +125,7 @@ async def test_null_reminders(store):
 
 
 async def test_create_one_reminder_tomorrow(store):
-    message = 'Please brush your teeth 🪥'
-    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, MESSAGE))
     
     rows = store.get_all_reminders() 
     assert len(rows) == 1
@@ -133,14 +133,13 @@ async def test_create_one_reminder_tomorrow(store):
     assert rows[0].group_id == SOCIAL_CHAT
     assert rows[0].next == TOMORROW
     assert rows[0].interval== 7
-    assert rows[0].message == message
+    assert rows[0].message == MESSAGE
     
     assert not store.get_due_reminders()
 
 
 async def test_get_reminder(store):
-    message = 'Please brush your teeth 🪥'
-    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, MESSAGE))
     
     reminder = store.get_reminder(id) 
     assert reminder
@@ -148,7 +147,7 @@ async def test_get_reminder(store):
     assert reminder.group_id == SOCIAL_CHAT
     assert reminder.next == TOMORROW
     assert reminder.interval== 7
-    assert reminder.message == message
+    assert reminder.message == MESSAGE
 
 
 async def test_get_null_reminder(store):
@@ -157,8 +156,7 @@ async def test_get_null_reminder(store):
 
 
 async def test_create_one_reminder_yesterday(store):
-    message = 'Please brush your teeth 🪥'
-    id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, MESSAGE))
     
     rows = store.get_due_reminders() 
     assert len(rows) == 1
@@ -166,10 +164,9 @@ async def test_create_one_reminder_yesterday(store):
 
 
 async def test_delete_reminder(store):
-    message = 'Please brush your teeth 🪥'
-    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
-    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, message))
-    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, message))
+    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, MESSAGE))
+    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, MESSAGE))
+    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, MESSAGE))
     
     store.delete_reminder(id2)
 
@@ -182,10 +179,9 @@ async def test_delete_reminder(store):
 
 
 async def test_delete_null_reminder(store):
-    message = 'Please brush your teeth 🪥'
-    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
-    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, message))
-    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, message))
+    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, MESSAGE))
+    id2 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 14, MESSAGE))
+    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 30, MESSAGE))
     
     store.delete_reminder(1000)
 
@@ -198,10 +194,9 @@ async def test_delete_null_reminder(store):
 
 
 async def test_get_due_reminders(store):
-    message = 'Please brush your teeth 🪥'
-    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 7, message))
-    store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 14, message))
-    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 30, message))
+    id1 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 7, MESSAGE))
+    store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 14, MESSAGE))
+    id3 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 30, MESSAGE))
 
     rows = store.get_due_reminders() 
     assert len(rows) == 2
@@ -210,8 +205,7 @@ async def test_get_due_reminders(store):
 
 
 async def test_update_reminders(store):
-    message = 'Please brush your teeth 🪥'
-    id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, MESSAGE))
     store.repost_reminder(id, YESTERDAY + 7)
     
     assert not store.get_due_reminders()

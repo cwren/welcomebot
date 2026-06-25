@@ -1,4 +1,5 @@
 from signalbot import Command, Context, MessageType
+from .message import Message
 from .util import update_group
 
 class MotDCommand(Command):
@@ -25,9 +26,9 @@ class MotDCommand(Command):
                         self.logger.info("social responding to a DM message")
                         reply = self.store.get_motd('TOS')
                         if not reply:
-                            reply = "I only reply to messages in the group chats"
+                            reply = Message("I only reply to messages in the group chats")
                             self.logger.warning("social has no TOS to send")
-                        await context.send(reply)
+                        await reply.send(context)
             else:
                 self.logger.info("social processing data message")
                 mentions = [ m['number'] for m in context.message.mentions if m ]
@@ -35,9 +36,9 @@ class MotDCommand(Command):
                     self.logger.info("social responding to a mention in a group")
                     reply = self.store.get_motd('TOS')
                     if not reply:
-                        reply = "I am a simple bot that posts a welcome message when people join."
+                        reply = Message("I am a simple bot that posts a welcome message when people join.")
                         self.logger.warning("social has no TOS to send")
-                    await context.send(reply)
+                    await reply.send(context)
 
         elif context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
             self.logger.info("social processing group update")
@@ -52,7 +53,7 @@ class MotDCommand(Command):
                 # TODO don't send too frequently
                 if motd:
                     self.logger.info("sent the message of the day")
-                    await context.send(motd)
+                    await motd.send(context)
                 else:
                     self.logger.warning("no message of the day to send")
             return

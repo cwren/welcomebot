@@ -3,6 +3,7 @@ from datetime import datetime
 from functools import total_ordering
 import juliandate as jd
 
+from .message import Message
 
 class Calendar():
     def __init__(self, dt=datetime):
@@ -55,7 +56,7 @@ class Reminders():
         self.store = store
         self.cal = cal
     
-    async def process_queue(self):
+    def process_queue(self):
         self.logger.info('checking for reminders')
         reminders = self.store.get_due_reminders()
         reminders = sorted(reminders)
@@ -67,7 +68,7 @@ class Reminders():
             else:
                 self.logger.info(f'sending reminder {reminder.id} to group {reminder.group_id}')
                 recipients.add(reminder.group_id)
-                promises.append(self.bot.send(reminder.group_id, reminder.message))
+                promises.append(reminder.message.send(self.bot, reminder.group_id))
                 if reminder.interval:
                     today = self.cal.today()
                     next = today + reminder.interval - (today - reminder.next) % reminder.interval

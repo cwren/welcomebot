@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from signalbot import MessageType
-from welcomebot import Calendar, CNCCommand, Reminder
+from welcomebot import Calendar, CNCCommand, Message, Reminder
 
 USER = "user 1"
 MANAGER_1 = "user 2"
@@ -34,11 +34,11 @@ GROUP_IDS = [ CHAT_1_ID, CHAT_2_ID ]
 
 CNC_ID = CHAT_1_ID
 
-MOTD = """This is a 
+MOTD = Message("""This is a 
 multiline "message"
-with some emoji:  👋👋"""
+with some emoji:  👋👋""")
 
-TOS = """I'm a little teapot"""
+TOS = Message("I'm a little teapot")
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
@@ -158,8 +158,7 @@ async def test_help(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamesp
 
     await cnc.handle(context)
 
-    assert len(context.send.call_args.args) == 1
-    assert CNCCommand.HELP_MESSAGE == context.send.call_args.args[0]
+    context.send.assert_called_once_with(CNCCommand.HELP_MESSAGE.text)
 
 
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -256,7 +255,7 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_motd {CHAT_2_TAG}\n{MOTD}'
+    context.message.text = f'set_motd {CHAT_2_TAG}\n{MOTD.text}'
 
     await cnc.handle(context)
     
@@ -374,7 +373,7 @@ async def test_set_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_tos\n{TOS}'
+    context.message.text = f'set_tos\n{TOS.text}'
 
     await cnc.handle(context)
     
@@ -522,7 +521,7 @@ async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS}'
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS.text}'
 
     await cnc.handle(context)
     
@@ -610,7 +609,7 @@ async def test_get_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
 
     assert len(context.send.call_args.args) == 1
     assert str(REMINDER_1.id) in  context.send.call_args.args[0]
-    assert REMINDER_1.message in  context.send.call_args.args[0]
+    assert REMINDER_1.message.text in  context.send.call_args.args[0]
 
 
 async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -622,12 +621,12 @@ async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, Si
     await cnc.handle(context)
 
     assert len(context.send.call_args.args) == 1
-    assert str(REMINDER_1.id) in  context.send.call_args.args[0]
-    assert CHAT_1_NAME in  context.send.call_args.args[0]
-    assert REMINDER_1_DATE in  context.send.call_args.args[0]
-    assert str(REMINDER_2.id) in  context.send.call_args.args[0]
-    assert CHAT_2_NAME in  context.send.call_args.args[0]
-    assert REMINDER_2_DATE in  context.send.call_args.args[0]
+    assert str(REMINDER_1.id) in context.send.call_args.args[0]
+    assert CHAT_1_NAME in context.send.call_args.args[0]
+    assert REMINDER_1_DATE in context.send.call_args.args[0]
+    assert str(REMINDER_2.id) in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+    assert REMINDER_2_DATE in context.send.call_args.args[0]
 
 
 async def test_list_reminders_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):

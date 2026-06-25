@@ -2,13 +2,14 @@ from importlib.metadata import version
 import hashlib
 
 from signalbot import Command, Context, MessageType
+
+from .message import Message
 from .util import update_group
 from .periodic import Calendar, Reminder
 
 
-
 class CNCCommand(Command):
-    HELP_MESSAGE = """you can use these commands:
+    HELP_MESSAGE = Message("""you can use these commands:
 list_groups: return enumerated known group names
 set_motd GROUP <newline> message
 get_motd GROUP
@@ -29,7 +30,7 @@ motd is the message posted in a specific group when a new member joins.
 tos is the message posted in response to DMs or mentions of the bot.
 
 reminder interval is measured in days, delay of 0 is today
-"""
+""")
 
     def __init__(self, logger, managers, cnc, store, reminders, cal=Calendar()):
         self.logger = logger
@@ -71,7 +72,7 @@ reminder interval is measured in days, delay of 0 is today
             match(ops[0].lower()):
                 case 'help':
                     self.logger.info("cnc sending help message")
-                    await context.send(CNCCommand.HELP_MESSAGE)
+                    await CNCCommand.HELP_MESSAGE.send(context)
                     return
 
                 case 'list_groups':
@@ -92,7 +93,7 @@ reminder interval is measured in days, delay of 0 is today
                     group_info = self._get_group_info()                    
                     group_tag = ops[1]
 
-                    motd = parts[1] if len(parts) == 2 else None
+                    motd = Message(parts[1]) if len(parts) == 2 else None
 
                     if group_tag not in group_info:
                         reply = f'invalid group index: {group_tag}'
@@ -126,7 +127,7 @@ reminder interval is measured in days, delay of 0 is today
                     group = group_info[group_tag]
                     motd = self.store.get_motd(group['internal_id'])
                     if motd:
-                        reply = f'motd for group {group_tag} ({group['name']}) is: \n{motd}'
+                        reply = f'motd for group {group_tag} ({group['name']}) is: \n{str(motd)}'
                     else:
                         reply = f'there is no motd for group {group_tag} ({group['name']})'
                     await context.send(reply)
@@ -154,8 +155,8 @@ reminder interval is measured in days, delay of 0 is today
 
                 case 'set_tos':
                     self.logger.info("cnc processing set_tos request")
-                    
-                    tos = parts[1] if len(parts) == 2 else None
+
+                    tos = Message(parts[1]) if len(parts) == 2 else None
 
                     self.store.put_motd('TOS', tos)
                     if tos:
@@ -170,7 +171,7 @@ reminder interval is measured in days, delay of 0 is today
 
                     tos = self.store.get_motd('TOS')
                     if tos:
-                        reply = f'tos is: \n{tos}'
+                        reply = f'tos is: \n{str(tos)}'
                     else:
                         reply = 'there is no tos for this bot'
                     await context.send(reply)
@@ -232,7 +233,7 @@ reminder interval is measured in days, delay of 0 is today
                         return
                     
                     group = group_info[group_tag]
-                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, interval, parts[1]))
+                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, interval, Message(parts[1])))
                     if id:
                         reply = f'reminder set: {id}'
                     else:
@@ -255,7 +256,7 @@ reminder interval is measured in days, delay of 0 is today
                         return
                     reminder = self.store.get_reminder(id)
                     if reminder:
-                        reply = f'ID {reminder.id}:\n{reminder.message}'
+                        reply = f'ID {reminder.id}:\n{str(reminder.message)}'
                     else:
                         reply = f'could not find reminder {id}'
                     await context.send(reply)

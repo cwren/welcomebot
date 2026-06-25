@@ -1,6 +1,7 @@
 
 import sqlite3
 
+from .message import Message
 from .periodic import Calendar, Reminder
 
 class BotStore():
@@ -109,7 +110,7 @@ class BotStore():
         res = cur.execute('SELECT motd FROM motd WHERE group_id = ?', (group, ))
         row = res.fetchone()
         cur.close()
-        return row[0] if row else None
+        return Message(row[0]) if row else None
 
     def put_motd(self, group, motd):
         cur = self.con.cursor()
@@ -117,7 +118,7 @@ class BotStore():
         self.con.commit()
         if motd:
             cur = self.con.cursor()
-            cur.execute("INSERT INTO motd (group_id, motd) VALUES(?, ?)", ( group, motd ) )
+            cur.execute("INSERT INTO motd (group_id, motd) VALUES(?, ?)", ( group, motd.text ) )
             self.con.commit()
             cur.close()
             return motd
@@ -133,7 +134,7 @@ class BotStore():
             reminder.group_id,
             reminder.next, 
             reminder.interval, 
-            reminder.message
+            reminder.message.text
         ) )
         id = cur.lastrowid
         self.con.commit()
@@ -145,14 +146,14 @@ class BotStore():
         res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder WHERE id = ?', (id,))
         row = res.fetchone()
         cur.close()
-        return Reminder(row[1], row[2], row[3], row[4], id=row[0]) if row else None
+        return Reminder(row[1], row[2], row[3], Message(row[4]), id=row[0]) if row else None
 
     def get_all_reminders(self):
         cur = self.con.cursor()
         res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder')
         rows = res.fetchall()
         cur.close()
-        reminders = [ Reminder(row[1], row[2], row[3], row[4], row[0]) for row in rows ]
+        reminders = [ Reminder(row[1], row[2], row[3], Message(row[4]), row[0]) for row in rows ]
         return reminders
 
     def get_due_reminders(self):
@@ -160,7 +161,7 @@ class BotStore():
         res = cur.execute('SELECT id, group_id, next, interval, message FROM reminder WHERE next <= ? ORDER BY 3 ASC', (self.cal.today(), ))
         rows = res.fetchall()
         cur.close()
-        reminders = [ Reminder(row[1], row[2], row[3], row[4], row[0]) for row in rows ]
+        reminders = [ Reminder(row[1], row[2], row[3], Message(row[4]), row[0]) for row in rows ]
         return reminders
 
     def delete_reminder(self, id):

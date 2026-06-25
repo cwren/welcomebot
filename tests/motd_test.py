@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from signalbot import MessageType
-from welcomebot import MotDCommand
+from welcomebot import Message, MotDCommand
 
 USER_1 = "user1"
 USER_2 = "user2"
@@ -39,7 +39,7 @@ NEW_GROUP = {
 GROUPS = [CNC_GROUP, SOCIAL_GROUP]
 GROUP_IDS = [ CNC_CHAT_ID, SOCIAL_CHAT_ID ]
 
-MOTD = "This is a message"
+MOTD = Message("This is a message")
 
 logger = logging.getLogger("welcomebot")
 
@@ -124,8 +124,7 @@ async def test_respond_to_mention(motd, context):
 
     await motd.handle(context)
 
-    assert len(context.send.call_args.args) == 1
-    assert MOTD == context.send.call_args.args[0]
+    context.send.assert_called_once_with(MOTD.text)
 
 
 async def test_respond_with_default_tos(motd, context):
@@ -149,8 +148,7 @@ async def test_reject_dm_with_MOTD(motd, context):
 
     await motd.handle(context)
 
-    assert len(context.send.call_args.args) == 1
-    assert MOTD == context.send.call_args.args[0]
+    context.send.assert_called_once_with(MOTD.text)
 
 
 async def test_reject_dm_generic(motd, context):
@@ -249,7 +247,7 @@ async def test_new_user(motd, context):
 
     await motd.handle(context)
 
-    context.send.assert_called_with(MOTD)
+    context.send.assert_called_with(MOTD.text)
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
     motd.store.retain_only.assert_called_once()
 
