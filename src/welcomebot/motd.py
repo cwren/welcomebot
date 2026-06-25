@@ -35,10 +35,12 @@ class MotDCommand(Command):
                 if self.bot.config.phone_number in mentions:
                     self.logger.info("social responding to a mention in a group")
                     reply = self.store.get_motd('TOS')
-                    if not reply:
-                        reply = Message("I am a simple bot that posts a welcome message when people join.")
+                    if reply:
+                        await reply.send(context)
+                    else:
                         self.logger.warning("social has no TOS to send")
-                    await reply.send(context)
+                        reply = Message("I am a simple bot that posts a welcome message when people join.")
+                        await reply.send(context)
 
         elif context.message.type == MessageType.GROUP_UPDATE_MESSAGE:
             self.logger.info("social processing group update")

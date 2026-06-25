@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime, UTC
 import logging
 import pytest
@@ -5,7 +6,7 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from welcomebot import BotStore, Calendar, Message, Reminder
+from welcomebot import Attachment, BotStore, Calendar, Message, Reminder
 
 
 USER_1 = "user1"
@@ -23,6 +24,19 @@ logger = logging.getLogger("welcomebot")
 
 
 @pytest.fixture
+def test_data():
+    test_data = SimpleNamespace()
+    with open("test_data/image1.png", "rb") as image1_png:
+        test_data.image1_png = image1_png.read()
+    with open("test_data/image1.b64", "r") as image1_b64:
+        test_data.image1_b64 = image1_b64.read()
+    with open("test_data/image2.png", "rb") as image2_png:
+        test_data.image2_png = image2_png.read()
+    with open("test_data/image2.b64", "r") as image2_b64:
+        test_data.image2_b64 = image2_b64.read()
+    return test_data
+
+@pytest.fixture
 def cal():
     now = datetime(*DATE)
     dt = SimpleNamespace()
@@ -30,9 +44,13 @@ def cal():
     return Calendar(dt)
 
 @pytest.fixture
-def store(cal):
+def store(cal, tmp_path):
     with tempfile.NamedTemporaryFile(mode='w+t', delete=True) as temp_file:
-        yield BotStore(logger, temp_file.name, cal=cal)
+        yield BotStore(logger, temp_file.name, file_store=tmp_path / 'files', cal=cal)
+
+
+async def test_upgrade(store):
+    assert store.get_version() > 0 
 
 
 async def test_null_members(store):
@@ -101,6 +119,17 @@ async def test_store_motd(store):
     assert not store.get_motd(CNC_CHAT)
 
 
+async def test_store_rich_motd(store, test_data):
+    attachments = [
+        Attachment(data=test_data.image1_b64, filename='image1.png'),
+        Attachment(data=test_data.image2_b64, filename='image2.png'),
+    ]
+    message = Message("This is a the Message of the Day", attachments=attachments)
+    store.put_motd(SOCIAL_CHAT, message)
+    assert store.get_motd(SOCIAL_CHAT) == message
+    assert not store.get_motd(CNC_CHAT)
+
+
 async def test_delete_motd(store):
     message = Message("This is a the Message of the Day")
     store.put_motd(SOCIAL_CHAT, message)
@@ -138,6 +167,24 @@ async def test_create_one_reminder_tomorrow(store):
     assert not store.get_due_reminders()
 
 
+async def test_create_rich_reminder(store, test_data):
+    attachments = [
+        Attachment(data=test_data.image1_b64, filename='image1.png'),
+    ]
+    message = Message("This is a rich reminder", attachments=attachments)
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    
+    rows = store.get_all_reminders() 
+    assert len(rows) == 1
+    assert rows[0].id == id
+    assert rows[0].group_id == SOCIAL_CHAT
+    assert rows[0].next == TOMORROW
+    assert rows[0].interval== 7
+    assert rows[0].message.text == message.text
+    
+    assert not store.get_due_reminders()
+
+
 async def test_get_reminder(store):
     id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, MESSAGE))
     
@@ -148,6 +195,22 @@ async def test_get_reminder(store):
     assert reminder.next == TOMORROW
     assert reminder.interval== 7
     assert reminder.message == MESSAGE
+
+
+async def test_get_rich_reminder(store, test_data):
+    attachments = [
+        Attachment(data=test_data.image1_b64, filename='image1.png'),
+    ]
+    message = Message("This is a rich reminder", attachments=attachments)
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    
+    reminder = store.get_reminder(id) 
+    assert reminder
+    assert reminder.id == id
+    assert reminder.group_id == SOCIAL_CHAT
+    assert reminder.next == TOMORROW
+    assert reminder.interval== 7
+    assert reminder.message == message
 
 
 async def test_get_null_reminder(store):

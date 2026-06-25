@@ -3,7 +3,7 @@ import hashlib
 
 from signalbot import Command, Context, MessageType
 
-from .message import Message
+from .message import Attachment, Message
 from .util import update_group
 from .periodic import Calendar, Reminder
 
@@ -93,7 +93,8 @@ reminder interval is measured in days, delay of 0 is today
                     group_info = self._get_group_info()                    
                     group_tag = ops[1]
 
-                    motd = Message(parts[1]) if len(parts) == 2 else None
+                    attachments = self.extract_attachments(context.message)
+                    motd = Message(parts[1], attachments) if len(parts) == 2 else None
 
                     if group_tag not in group_info:
                         reply = f'invalid group index: {group_tag}'
@@ -127,10 +128,10 @@ reminder interval is measured in days, delay of 0 is today
                     group = group_info[group_tag]
                     motd = self.store.get_motd(group['internal_id'])
                     if motd:
-                        reply = f'motd for group {group_tag} ({group['name']}) is: \n{str(motd)}'
+                        await motd.send(context, preamble=f'motd for group {group_tag} ({group['name']}) is: \n')
                     else:
                         reply = f'there is no motd for group {group_tag} ({group['name']})'
-                    await context.send(reply)
+                        await context.send(reply)
                     return
 
                 case 'get_group_id':
@@ -156,7 +157,8 @@ reminder interval is measured in days, delay of 0 is today
                 case 'set_tos':
                     self.logger.info("cnc processing set_tos request")
 
-                    tos = Message(parts[1]) if len(parts) == 2 else None
+                    attachments = self.extract_attachments(context.message)
+                    tos = Message(parts[1], attachments) if len(parts) == 2 else None
 
                     self.store.put_motd('TOS', tos)
                     if tos:
@@ -171,10 +173,9 @@ reminder interval is measured in days, delay of 0 is today
 
                     tos = self.store.get_motd('TOS')
                     if tos:
-                        reply = f'tos is: \n{str(tos)}'
+                        await tos.send(context, preamble=f'tos is: \n')
                     else:
-                        reply = 'there is no tos for this bot'
-                    await context.send(reply)
+                        await context.send('there is no tos for this bot')
                     return
 
                 case 'list_reminders':
@@ -233,7 +234,12 @@ reminder interval is measured in days, delay of 0 is today
                         return
                     
                     group = group_info[group_tag]
-                    id = self.store.put_reminder(Reminder(group['internal_id'], self.cal.today() + delay, interval, Message(parts[1])))
+                    attachments = self.extract_attachments(context.message)
+                    id = self.store.put_reminder(Reminder(
+                        group['internal_id'], 
+                        self.cal.today() + delay, 
+                        interval, 
+                        Message(parts[1], attachments)))
                     if id:
                         reply = f'reminder set: {id}'
                     else:
@@ -256,10 +262,9 @@ reminder interval is measured in days, delay of 0 is today
                         return
                     reminder = self.store.get_reminder(id)
                     if reminder:
-                        reply = f'ID {reminder.id}:\n{str(reminder.message)}'
+                        await reminder.message.send(context, preamble=f'ID {reminder.id}:\n')
                     else:
-                        reply = f'could not find reminder {id}'
-                    await context.send(reply)
+                        await context.send(f'could not find reminder {id}')
                     return
                 
                 case 'delete_reminder':
@@ -312,3 +317,11 @@ reminder interval is measured in days, delay of 0 is today
             reply = """unknown command, type "help" for a list"""
             await context.send(reply)
             return
+
+    def extract_attachments(self, message):
+        attachments = []
+        for index in range(len(message.base64_attachments)):
+            attachments.append(Attachment(
+                            filename=message.attachments_local_filenames[index],
+                            data=message.base64_attachments[index]))
+        return attachments

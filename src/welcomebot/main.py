@@ -36,7 +36,9 @@ def loop():
     cnc_id = os.environ["WELCOME_CNC"]
     managers = re.split(r'[\s|,:]+', os.environ["WELCOME_MANAGER"])
 
-    bot_store = store.BotStore(logger, db=config_directory / "bot_memory.db")
+    bot_store = store.BotStore(logger,
+                               db=config_directory / "bot_memory.db",
+                               file_store=config_directory / "attachments")
     reminders = periodic.Reminders(logger, bot, bot_store)
     bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store, reminders), groups=[cnc_id]) # monitor other groups
     bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups

@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 
 from signalbot import MessageType
-from welcomebot import Calendar, CNCCommand, Message, Reminder
+from welcomebot import Attachment, Calendar, CNCCommand, Message, Reminder
 
 USER = "user 1"
 MANAGER_1 = "user 2"
@@ -60,6 +60,8 @@ def cal():
 def context():
     context = SimpleNamespace()
     context.message = SimpleNamespace()
+    context.message.base64_attachments = []
+    context.message.attachments_local_filenames = []
     context.send = AsyncMock(return_value=3)
     return context
 
@@ -266,12 +268,30 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     assert CHAT_2_NAME in context.send.call_args.args[0]
 
 
+async def test_set_rich_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd {CHAT_2_TAG}\n{MOTD.text}'
+    context.message.attachments_local_filenames = ['foo']
+    context.message.base64_attachments = ['0000']
+    rich = Message(MOTD.text, [Attachment('foo', '0000')])
+
+    await cnc.handle(context)
+    
+    cnc.store.put_motd.assert_called_once_with(CHAT_2_ID, rich)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'set' in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+
+
 async def test_get_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'get_motd {CHAT_2_TAG}\n{MOTD}'
-    message = "THIS IS A TEST MOTD"
+    context.message.text = f'get_motd {CHAT_2_TAG}\n{MOTD.text}'
+    message = Message("THIS IS A TEST MOTD")
     cnc.store.get_motd = MagicMock(return_value=message)
 
     await cnc.handle(context)
@@ -279,9 +299,28 @@ async def test_get_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     cnc.store.get_motd.assert_called_once_with(CHAT_2_ID)
 
     assert len(context.send.call_args.args) == 1
-    assert message in context.send.call_args.args[0]
+    assert message.text in context.send.call_args.args[0]
     assert CHAT_2_NAME in context.send.call_args.args[0]
     assert CHAT_2_TAG in context.send.call_args.args[0]
+
+
+async def test_get_rich_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd {CHAT_2_TAG}\n{MOTD.text}'
+    rich = Message(MOTD.text, [Attachment('foo', '0000')])
+    cnc.store.get_motd = MagicMock(return_value=rich)
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_called_once_with(CHAT_2_ID)
+
+    assert len(context.send.call_args.args) == 1
+    assert rich.text in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+    assert CHAT_2_TAG in context.send.call_args.args[0]
+    assert '0000' == context.send.call_args.kwargs['base64_attachments'][0]
 
 
 async def test_get_motd_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -384,18 +423,52 @@ async def test_set_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     assert 'tos' in context.send.call_args.args[0]
 
 
+async def test_set_rich_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_tos\n{TOS.text}'
+    context.message.attachments_local_filenames = ['foo']
+    context.message.base64_attachments = ['0000']
+    rich = Message(TOS.text, [Attachment('foo', '0000')])
+
+    await cnc.handle(context)
+    
+    cnc.store.put_motd.assert_called_once_with('TOS', rich)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'set' in context.send.call_args.args[0]
+    assert 'tos' in context.send.call_args.args[0]
+
+
 async def test_get_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
     context.message.text = f'get_tos'
-    cnc.store.get_motd = MagicMock(return_value='TEST_TOS')
+    cnc.store.get_motd = MagicMock(return_value=TOS)
 
     await cnc.handle(context)
     
     cnc.store.get_motd.assert_called_once_with('TOS')
     assert len(context.send.call_args.args) == 1
     assert 'tos is' in context.send.call_args.args[0]
+
+
+async def test_get_rich_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_tos'
+    rich = Message(MOTD.text, [Attachment('foo', '0000')])
+    cnc.store.get_motd = MagicMock(return_value=rich)
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_called_once_with('TOS')
+    assert len(context.send.call_args.args) == 1
+    assert 'tos is' in context.send.call_args.args[0]
+    assert '0000' == context.send.call_args.kwargs['base64_attachments'][0]
 
 
 async def test_get_tos_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -536,6 +609,29 @@ async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert f'reminder set: {REMINDER_1.id}' == context.send.call_args.args[0]
 
 
+async def test_set_rich_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS.text}'
+    context.message.attachments_local_filenames = ['foo']
+    context.message.base64_attachments = ['0000']
+    rich_message = Message(TOS.text, [Attachment('foo', '0000')])
+    rich = Reminder(CHAT_1_ID, TODAY, 7, rich_message, id=1)
+
+    await cnc.handle(context)
+    
+    assert len(cnc.store.put_reminder.call_args.args) == 1
+    cnc.store.put_reminder.assert_called_once()
+    actual = cnc.store.put_reminder.call_args.args[0]
+    assert actual.id == Reminder.DRAFT 
+    actual.id = rich.id 
+    assert rich == actual
+
+    assert len(context.send.call_args.args) == 1
+    assert f'reminder set: {REMINDER_1.id}' == context.send.call_args.args[0]
+
+
 async def test_set_reminder_in_past(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
@@ -610,6 +706,23 @@ async def test_get_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert len(context.send.call_args.args) == 1
     assert str(REMINDER_1.id) in  context.send.call_args.args[0]
     assert REMINDER_1.message.text in  context.send.call_args.args[0]
+
+
+async def test_get_rich_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_reminder {REMINDER_1.id}'
+    rich_message = Message(TOS.text, [Attachment('foo', '0000')])
+    rich = Reminder(CHAT_1_ID, TODAY, 7, rich_message, id=REMINDER_1.id)
+    cnc.store.get_reminder = MagicMock(return_value=rich)
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert str(REMINDER_1.id) in  context.send.call_args.args[0]
+    assert REMINDER_1.message.text in  context.send.call_args.args[0]
+    assert '0000' == context.send.call_args.kwargs['base64_attachments'][0]
 
 
 async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):

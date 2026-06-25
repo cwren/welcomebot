@@ -4,7 +4,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call
 
-from welcomebot import Calendar, Reminder, Reminders, Message
+from welcomebot import Attachment, Calendar, Reminder, Reminders, Message
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
@@ -50,6 +50,7 @@ def store():
     fake_store.get_due_reminders = MagicMock(return_value=[])
     fake_store.repost_reminder = MagicMock()
     fake_store.delete_reminder = MagicMock()
+    fake_store.get_reminder = MagicMock()
     return fake_store
 
 
@@ -105,6 +106,20 @@ async def test_one_shot(reminders):
     reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text)
     reminders.store.repost_reminder.assert_not_called()
     reminders.store.delete_reminder.assert_called_once_with(1)
+    
+
+async def test_rich_reminder(reminders):
+    rich = ONE_SHOT[0]
+    rich.message = Message(MESSAGE_1.text, [Attachment('foo', '0000')])
+    reminders.store.get_due_reminders = MagicMock(return_value=[rich])
+    reminders.store.get_reminder = MagicMock(return_value=rich)
+
+    await reminders.process_queue()
+    
+    assert len(reminders.bot.send.call_args.args) == 2
+    assert CHAT_ID_1 in reminders.bot.send.call_args.args[0]
+    assert MESSAGE_1.text in reminders.bot.send.call_args.args[1]
+    assert '0000' == reminders.bot.send.call_args.kwargs['base64_attachments'][0]
 
 
 async def test_two_process(reminders):
