@@ -8,3 +8,4 @@ notes.txt
 volume
 .DS_Store
 prod
+.coverage

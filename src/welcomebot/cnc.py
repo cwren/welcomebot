@@ -5,31 +5,32 @@ from signalbot import Command, Context, MessageType
 from .util import update_group
 from .periodic import Calendar, Reminder
 
-HELP_MESSAGE = """you can use these commands:
-  list_groups: return enumerated known group names
-  set_motd GROUP <newline> message
-  get_motd GROUP
-  set_tos <newline> message
-  get_tos
-  list_reminders
-  set_reminder GROUP delay interval <newline> message
-  get_reminder REMINDER_ID
-  delete_reminder REMINDER_ID
-  run_reminder_queue
-  who: list members of cnc chat
-  get_group_id GROUP: get the internal Signal ID of a group
-  today: show today's julian date
-  version: report the bot version number
-
-  motd is the message posted in a specific group when a new member joins.
-
-  tos is the message posted in response to DMs or mentions of the bot.
-
-  reminder interval is measured in days, delay of 0 is today
-  """
 
 
 class CNCCommand(Command):
+    HELP_MESSAGE = """you can use these commands:
+list_groups: return enumerated known group names
+set_motd GROUP <newline> message
+get_motd GROUP
+set_tos <newline> message
+get_tos
+list_reminders
+set_reminder GROUP delay interval <newline> message
+get_reminder REMINDER_ID
+delete_reminder REMINDER_ID
+run_reminder_queue
+who: list members of cnc chat
+get_group_id GROUP: get the internal Signal ID of a group
+today: show today's julian date
+version: report the bot version number
+
+motd is the message posted in a specific group when a new member joins.
+
+tos is the message posted in response to DMs or mentions of the bot.
+
+reminder interval is measured in days, delay of 0 is today
+"""
+
     def __init__(self, logger, managers, cnc, store, reminders, cal=Calendar()):
         self.logger = logger
         self.managers = managers
@@ -37,6 +38,7 @@ class CNCCommand(Command):
         self.store = store
         self.reminders = reminders
         self.cal = cal
+
 
     def _get_group_info(self):
         group_info = [ { key: group[key] for key in ['name', 'internal_id'] } for group in self.bot.groups ]
@@ -69,7 +71,7 @@ class CNCCommand(Command):
             match(ops[0].lower()):
                 case 'help':
                     self.logger.info("cnc sending help message")
-                    await context.send(HELP_MESSAGE)
+                    await context.send(CNCCommand.HELP_MESSAGE)
                     return
 
                 case 'list_groups':
@@ -152,11 +154,7 @@ class CNCCommand(Command):
 
                 case 'set_tos':
                     self.logger.info("cnc processing set_tos request")
-                    if len(ops) < 1:
-                        reply = 'unrecognized set_tos syntax'
-                        await context.send(reply)
-                        return
-
+                    
                     tos = parts[1] if len(parts) == 2 else None
 
                     self.store.put_motd('TOS', tos)

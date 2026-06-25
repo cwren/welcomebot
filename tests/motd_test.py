@@ -107,6 +107,15 @@ async def test_ignore_self_dm(motd, context):
     context.send.assert_not_called()
 
 
+async def test_ignore_read_receipt(motd, context):
+    context.message.type = MessageType.READ_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+
+    await motd.handle(context)
+
+    context.send.assert_not_called()
+
+
 async def test_respond_to_mention(motd, context):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
@@ -117,6 +126,19 @@ async def test_respond_to_mention(motd, context):
 
     assert len(context.send.call_args.args) == 1
     assert MOTD == context.send.call_args.args[0]
+
+
+async def test_respond_with_default_tos(motd, context):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+    context.message.source_uuid = USER_1
+    context.message.mentions = [ { 'number': MY_NUMBER } ]
+    motd.store.get_motd = MagicMock(return_value=None)
+
+    await motd.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'simple bot' in context.send.call_args.args[0]
 
 
 async def test_reject_dm_with_MOTD(motd, context):
@@ -228,6 +250,24 @@ async def test_new_user(motd, context):
     await motd.handle(context)
 
     context.send.assert_called_with(MOTD)
+    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
+    motd.store.retain_only.assert_called_once()
+
+
+async def test_new_user_not_motd(motd, context):
+    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+    context.message.source_uuid = USER_1
+
+    UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
+    NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
+    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
+    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    motd.store.get_motd = MagicMock(return_value=None)
+
+    await motd.handle(context)
+
+    context.send.assert_not_called()
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
     motd.store.retain_only.assert_called_once()
 

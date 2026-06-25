@@ -38,6 +38,10 @@ async def test_null_members(store):
     assert not store.get_members(SOCIAL_CHAT) 
 
 
+async def test_null_groups(store):
+    assert not store.list_groups() 
+
+
 async def test_store_member(store):
     store.put_members(SOCIAL_CHAT, [ USER_1 ])
     ret = store.get_members(SOCIAL_CHAT)
@@ -54,8 +58,39 @@ async def test_store_members(store):
     assert USER_2 in ret
 
 
+async def test_list_groups(store):
+    store.put_members(SOCIAL_CHAT, [ USER_1, USER_2])
+    store.put_members(CNC_CHAT, [ USER_1 ])
+    ret = store.list_groups()
+    assert len(ret) == 2
+    assert SOCIAL_CHAT in ret
+    assert CNC_CHAT in ret
+
+
+async def test_retain_all(store):
+    store.put_members(SOCIAL_CHAT, [ USER_1, USER_2])
+    store.put_members(CNC_CHAT, [ USER_1 ])
+    obsolete_groups = store.retain_only([CNC_CHAT, SOCIAL_CHAT ])
+    retained_groups = store.list_groups()
+    assert len(obsolete_groups) == 0
+    assert len(retained_groups) == 2
+    assert SOCIAL_CHAT in retained_groups
+    assert CNC_CHAT in retained_groups
+
+
+async def test_retain_one(store):
+    store.put_members(SOCIAL_CHAT, [ USER_1, USER_2])
+    store.put_members(CNC_CHAT, [ USER_1 ])
+    obsolete_groups = store.retain_only([CNC_CHAT ])
+    retained_groups = store.list_groups()
+    assert len(obsolete_groups) == 1
+    assert len(retained_groups) == 1
+    assert SOCIAL_CHAT in obsolete_groups
+    assert CNC_CHAT in retained_groups
+
+
 async def test_null_motd(store):
-    assert not store.get_motd(SOCIAL_CHAT) 
+    assert not store.get_motd(SOCIAL_CHAT)
 
 
 async def test_store_motd(store):
@@ -63,6 +98,13 @@ async def test_store_motd(store):
     store.put_motd(SOCIAL_CHAT, message)
     assert store.get_motd(SOCIAL_CHAT) == message
     assert not store.get_motd(CNC_CHAT)
+
+
+async def test_delete_motd(store):
+    message = "This is a the Message of the Day"
+    store.put_motd(SOCIAL_CHAT, message)
+    store.put_motd(SOCIAL_CHAT, None)
+    assert not store.get_motd(SOCIAL_CHAT)
 
 
 async def test_store_motd_with_special_characters(store):
@@ -76,8 +118,10 @@ async def test_store_has_group(store):
     assert store.has_group(SOCIAL_CHAT)
     assert not store.has_group(CNC_CHAT)
 
+
 async def test_null_reminders(store):
     assert not store.get_all_reminders() 
+
 
 async def test_create_one_reminder_tomorrow(store):
     message = 'Please brush your teeth 🪥'
@@ -120,6 +164,7 @@ async def test_create_one_reminder_yesterday(store):
     assert len(rows) == 1
     assert rows[0].id == id
 
+
 async def test_delete_reminder(store):
     message = 'Please brush your teeth 🪥'
     id1 = store.put_reminder(Reminder(SOCIAL_CHAT, YESTERDAY, 7, message))
@@ -134,6 +179,7 @@ async def test_delete_reminder(store):
     assert id1 in remaining_ids
     assert id2 not in remaining_ids
     assert id3 in remaining_ids
+
 
 async def test_delete_null_reminder(store):
     message = 'Please brush your teeth 🪥'
@@ -150,6 +196,7 @@ async def test_delete_null_reminder(store):
     assert id2 in remaining_ids
     assert id3 in remaining_ids
 
+
 async def test_get_due_reminders(store):
     message = 'Please brush your teeth 🪥'
     id1 = store.put_reminder(Reminder(SOCIAL_CHAT, TODAY, 7, message))
@@ -160,6 +207,7 @@ async def test_get_due_reminders(store):
     assert len(rows) == 2
     due_ids = [ row.id for row in rows ]
     assert due_ids == [id3, id1]
+
 
 async def test_update_reminders(store):
     message = 'Please brush your teeth 🪥'

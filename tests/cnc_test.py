@@ -150,6 +150,18 @@ async def test_reject_user(cnc: CNCCommand[logging.Logger, list[str], str, Simpl
     context.send.assert_not_called()
 
 
+async def test_help(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = "HeLp"
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert CNCCommand.HELP_MESSAGE == context.send.call_args.args[0]
+
+
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
@@ -174,6 +186,55 @@ async def test_group_id(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     assert len(context.send.call_args.args) == 1
     assert CHAT_2_NAME in context.send.call_args.args[0]
     assert CHAT_2_ID in context.send.call_args.args[0]
+
+
+async def test_group_id_no_group(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = 'get_group_id'
+
+    await cnc.handle(context)
+    
+    assert len(context.send.call_args.args) == 1
+    assert "unrecognized" in context.send.call_args.args[0]
+
+
+async def test_group_id_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = 'get_group_id NOTAGROUP'
+
+    await cnc.handle(context)
+    
+    assert len(context.send.call_args.args) == 1
+    assert "invalid" in context.send.call_args.args[0]
+
+
+async def test_set_motd_no_group(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in context.send.call_args.args[0]
+
+
+async def test_set_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_motd NONE_GROUP'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'invalid' in context.send.call_args.args[0]
+    assert 'NONE_GROUP' in context.send.call_args.args[0]
 
 
 async def test_clear_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -206,33 +267,68 @@ async def test_set_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNa
     assert CHAT_2_NAME in context.send.call_args.args[0]
 
 
-async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
-    context.message.type = MessageType.DATA_MESSAGE
-    context.message.group = CNC_ID
-    context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_motd badnum\n{MOTD}'
-
-    await cnc.handle(context)
-    
-    cnc.store.put_motd.assert_not_called()
-
-    assert len(context.send.call_args.args) == 1
-    assert 'invalid' in context.send.call_args.args[0]
-    
-
-
 async def test_get_motd(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'get_motd {CHAT_2_TAG}'
+    context.message.text = f'get_motd {CHAT_2_TAG}\n{MOTD}'
+    message = "THIS IS A TEST MOTD"
+    cnc.store.get_motd = MagicMock(return_value=message)
 
     await cnc.handle(context)
     
     cnc.store.get_motd.assert_called_once_with(CHAT_2_ID)
 
+    assert len(context.send.call_args.args) == 1
+    assert message in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+    assert CHAT_2_TAG in context.send.call_args.args[0]
+
+
+async def test_get_motd_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd {CHAT_2_TAG}\n{MOTD}'
+    cnc.store.get_motd = MagicMock(return_value=None)
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_called_once_with(CHAT_2_ID)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'no motd' in context.send.call_args.args[0]
+    assert CHAT_2_NAME in context.send.call_args.args[0]
+    assert CHAT_2_TAG in context.send.call_args.args[0]
+
+
+async def test_get_motd_no_group(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in context.send.call_args.args[0]
+
 
 async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_motd badnum\n{MOTD}'
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_not_called()
+
+    assert len(context.send.call_args.args) == 1
+    assert 'invalid' in context.send.call_args.args[0]
+
+
+async def test_clear_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
@@ -246,7 +342,7 @@ async def test_get_motd_nan(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     assert 'invalid' in context.send.call_args.args[0]
     
 
-async def test_unknwon_cnc_channel(cnc, context):
+async def test_unknown_cnc_channel(cnc, context):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
@@ -294,10 +390,132 @@ async def test_get_tos(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
     context.message.text = f'get_tos'
+    cnc.store.get_motd = MagicMock(return_value='TEST_TOS')
 
     await cnc.handle(context)
     
     cnc.store.get_motd.assert_called_once_with('TOS')
+    assert len(context.send.call_args.args) == 1
+    assert 'tos is' in context.send.call_args.args[0]
+
+
+async def test_get_tos_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_tos'
+    cnc.store.get_motd = MagicMock(return_value=None)
+
+    await cnc.handle(context)
+    
+    cnc.store.get_motd.assert_called_once_with('TOS')
+    assert len(context.send.call_args.args) == 1
+    assert 'there is no tos' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_no_interval(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_no_group(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_bad_group(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder NOTAGROUP 0 {REMINDER_1.interval}\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'invalid group index' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_nan_delay(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} foo {REMINDER_1.interval}\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'integer delay' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_neg_delay(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} -5 {REMINDER_1.interval}\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'negative' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_nan_period(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 foo\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'integer interval' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_neg_period(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 -5\n{TOS}'
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'negative' in context.send.call_args.args[0]
+
+
+async def test_set_reminder_backend_fail(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS}'
+    cnc.store.put_reminder = MagicMock(return_value=None)
+
+    await cnc.handle(context)
+    
+    cnc.store.put_reminder.assert_called_once()
+    assert len(context.send.call_args.args) == 1
+    assert 'fail' in context.send.call_args.args[0]
 
 
 async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
@@ -345,6 +563,43 @@ async def test_set_reminder_neg_interval(cnc: CNCCommand[logging.Logger, list[st
     assert 'negative' in context.send.call_args.args[0]
 
 
+async def test_get_reminder_no_id(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_reminder'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in  context.send.call_args.args[0]
+
+
+async def test_get_reminder_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_reminder foo'
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'integer index' in  context.send.call_args.args[0]
+
+
+async def test_get_reminder_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'get_reminder 1'
+    cnc.store.get_reminder = MagicMock(return_value=None)
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'could not find' in  context.send.call_args.args[0]
+
+
 async def test_get_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
@@ -373,6 +628,45 @@ async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, Si
     assert str(REMINDER_2.id) in  context.send.call_args.args[0]
     assert CHAT_2_NAME in  context.send.call_args.args[0]
     assert REMINDER_2_DATE in  context.send.call_args.args[0]
+
+
+async def test_list_reminders_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = 'list_reminders'
+    cnc.store.get_all_reminders = MagicMock(return_value=[])
+
+    await cnc.handle(context)
+
+    assert len(context.send.call_args.args) == 1
+    assert 'there are no reminders' in  context.send.call_args.args[0]
+
+
+async def test_delete_reminder_no_id(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'delete_reminder'
+
+    await cnc.handle(context)
+
+    cnc.store.delete_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'unrecognized' in  context.send.call_args.args[0]
+
+
+async def test_delete_reminder_nan(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
+    context.message.type = MessageType.DATA_MESSAGE
+    context.message.group = CNC_ID
+    context.message.source_uuid = MANAGER_1
+    context.message.text = f'delete_reminder foo'
+
+    await cnc.handle(context)
+
+    cnc.store.delete_reminder.assert_not_called()
+    assert len(context.send.call_args.args) == 1
+    assert 'integer index' in  context.send.call_args.args[0]
 
 
 async def test_delete_reminder(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
