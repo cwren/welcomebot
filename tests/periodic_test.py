@@ -202,3 +202,26 @@ def test_order_accept_null_messages():
         Reminder(CHAT_ID_1, TODAY, WEEKLY, None, 2) < Reminder(CHAT_ID_1, TODAY, WEEKLY, 'ZZZ', 2)
     except:
         pytest.fail()
+
+def test_today():
+    dt = SimpleNamespace()
+    dt.now = MagicMock(return_value=datetime(2026, 5, 26, 0, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY
+    dt.now = MagicMock(return_value=datetime(2026, 5, 26, 1, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY
+    dt.now = MagicMock(return_value=datetime(2026, 5, 26, 5, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY
+    dt.now = MagicMock(return_value=datetime(2026, 5, 26, 12, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY
+    dt.now = MagicMock(return_value=datetime(2026, 5, 26, 23, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY
+    dt.now = MagicMock(return_value=datetime(2026, 5, 27, 0, 47, 10, 1, UTC))
+    assert Calendar(dt=dt).today() == TODAY + 1
+
+def test_to_ymd():
+    dt = SimpleNamespace()
+    dt.now = MagicMock()
+    assert Calendar(dt=dt).to_ymd(TODAY) == "2026-05-26"
+    assert Calendar(dt=dt).to_ymd(TODAY + 1) == "2026-05-27"
+    assert Calendar(dt=dt).to_ymd(TODAY - 1) == "2026-05-25"
+    dt.now.assert_not_called()
