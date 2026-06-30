@@ -39,13 +39,15 @@ multiline "message"
 with some emoji:  👋👋""")
 
 TOS = Message("I'm a little teapot")
+REMINDER_1_MSG = Message("This is my handle")
+REMINDER_2_MSG = Message("this is my spout")
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
 REMINDER_1_DATE = '2026-05-26'
-REMINDER_1 = Reminder(CHAT_1_ID, TODAY, 7, TOS, id=1)
+REMINDER_1 = Reminder(CHAT_1_ID, TODAY, 7, REMINDER_1_MSG, id=1)
 REMINDER_2_DATE = '2026-05-31'
-REMINDER_2 = Reminder(CHAT_2_ID, TODAY + 5, 28, TOS, id=2)
+REMINDER_2 = Reminder(CHAT_2_ID, TODAY + 5, 28, REMINDER_2_MSG, id=2)
 
 logger = logging.getLogger("welcomebot")
 
@@ -594,7 +596,7 @@ async def test_set_reminder(cnc: CNCCommand[logging.Logger, list[str], str, Simp
     context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
-    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{TOS.text}'
+    context.message.text = f'set_reminder {CHAT_1_TAG} 0 {REMINDER_1.interval}\n{REMINDER_1_MSG.text}'
 
     await cnc.handle(context)
     
@@ -713,7 +715,7 @@ async def test_get_rich_reminder(cnc: CNCCommand[logging.Logger, list[str], str,
     context.message.group = CNC_ID
     context.message.source_uuid = MANAGER_1
     context.message.text = f'get_reminder {REMINDER_1.id}'
-    rich_message = Message(TOS.text, [Attachment('foo', '0000')])
+    rich_message = Message(REMINDER_1_MSG.text, [Attachment('foo', '0000')])
     rich = Reminder(CHAT_1_ID, TODAY, 7, rich_message, id=REMINDER_1.id)
     cnc.store.get_reminder = MagicMock(return_value=rich)
 
@@ -737,9 +739,11 @@ async def test_list_reminders(cnc: CNCCommand[logging.Logger, list[str], str, Si
     assert str(REMINDER_1.id) in context.send.call_args.args[0]
     assert CHAT_1_NAME in context.send.call_args.args[0]
     assert REMINDER_1_DATE in context.send.call_args.args[0]
+    assert REMINDER_1_MSG.text[0:20] in context.send.call_args.args[0]
     assert str(REMINDER_2.id) in context.send.call_args.args[0]
     assert CHAT_2_NAME in context.send.call_args.args[0]
     assert REMINDER_2_DATE in context.send.call_args.args[0]
+    assert REMINDER_2_MSG.text[0:20] in context.send.call_args.args[0]
 
 
 async def test_list_reminders_null(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):

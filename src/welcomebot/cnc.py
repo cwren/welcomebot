@@ -186,7 +186,7 @@ reminder interval is measured in days, delay of 0 is today
                         gl = self._get_group_lookup()
                         reply = 'reminders:\n'
                         reply += '\n'.join(
-                            [ f'ID {r.id}: \n\tgroup: {gl[r.group_id]['name']}\n\tnext post: {self.cal.to_ymd(r.next)}\n\tevery {r.interval}d' for r in reminders ]
+                            [ f'ID {r.id}: \n\tgroup: {gl[r.group_id]['name']}\n\tnext post: {self.cal.to_ymd(r.next)}\n\tevery {r.interval}d\n\t{r.message.text[0:40]}' for r in reminders ]
                         )
                     else:
                         reply = 'there are no reminders'
