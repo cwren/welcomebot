@@ -16,6 +16,7 @@ services:
       - WELCOME_CNC=${WELCOME_CNC}
       - LOGTAG=${LOGTAG}
       - LOGLEVEL=${LOGLEVEL}
+      - REMINDER_TIMES=${REMINDER_TIMES}
     volumes:
       - state:/home/.local 
     networks:
