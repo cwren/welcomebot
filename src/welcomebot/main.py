@@ -48,6 +48,7 @@ def loop():
         args=[reminders],
         trigger='cron',
         hour=os.environ.get('REMINDER_TIMES', '13'),
+        misfire_grace_time=3600,
         coalesce=True,
         max_instances=1)
 
