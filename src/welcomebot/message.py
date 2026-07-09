@@ -1,3 +1,4 @@
+import json
 from collections import Counter
 
 class Attachment:
@@ -40,12 +41,59 @@ class Message:
         if receiver:
             # send via bot interface to a specific recipient
             if attachment_data:
-                return vector.send(receiver, preamble + self.text, base64_attachments=attachment_data)
+                return vector.send(receiver, preamble + self.text, base64_attachments=attachment_data, text_mode="styled")
             else:
-                return vector.send(receiver, preamble + self.text)
+                return vector.send(receiver, preamble + self.text, text_mode="styled")
         else:
             # reply to a message context
             if attachment_data:
-                return vector.send(preamble + self.text, base64_attachments=attachment_data)
+                return vector.send(preamble + self.text, base64_attachments=attachment_data, text_mode="styled")
             else:
-                return vector.send(preamble + self.text)
+                return vector.send(preamble + self.text, text_mode="styled")
+            
+class OverlappingStyleRegions(Exception):
+    pass
+
+class UnknownStyle(Exception):
+    pass
+
+DELIMITERS = {
+    'BOLD' : '**',
+    'ITALIC' : '*',
+    'STRIKETHROUGH' : '~',
+    'SPOILER' : '||',
+    'MONOSPACE' : '`',
+}
+
+def apply_styles(message):
+    raw = json.loads(message.raw_message)
+    if not 'textStyles' in raw['envelope']['dataMessage']:
+        return
+        
+    styles = sorted(raw['envelope']['dataMessage']['textStyles'], key=lambda x: x['start'])
+    for i in range(1, len(styles)):
+        previous_end = styles[i - 1]['start'] + styles[i - 1]['length'] - 1
+        if styles[i]['start'] <= previous_end:
+            raise OverlappingStyleRegions()
+    text = []
+    input = raw['envelope']['dataMessage']['message']
+    ptr = 0
+    for style in styles:
+        if style['style'] not in DELIMITERS:
+            raise UnknownStyle(f'Unrecognized style {style['style']}')
+        start = style['start']
+        end = style['start'] + style['length']
+        if start >= ptr and start < len(input):
+            text.append(input[ptr:start])
+            text.append(DELIMITERS[style['style']])
+            text.append(input[start:end])
+            text.append(DELIMITERS[style['style']])
+        ptr = end
+
+    if not text:
+        text = input
+    else:
+        text.append(input[end:])
+
+    message.text = ''.join(text)
+    return

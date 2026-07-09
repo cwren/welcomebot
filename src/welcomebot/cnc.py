@@ -3,7 +3,7 @@ import hashlib
 
 from signalbot import Command, Context, MessageType
 
-from .message import Attachment, Message
+from .message import Attachment, Message, OverlappingStyleRegions, UnknownStyle, apply_styles
 from .util import update_group
 from .periodic import Calendar, Reminder
 
@@ -66,6 +66,17 @@ reminder interval is measured in days, delay of 0 is today
                 self.logger.info("cnc ignoring message not in the CNC group chat")
                 return
             
+            try:
+                apply_styles(context.message)
+            except OverlappingStyleRegions:
+                self.logger.info('cnc failed to process overlapping style regions')
+                await context.send("Sorry, I can't handle overlapping styles")
+                return
+            except UnknownStyle as e:
+                self.logger.info(f'cnc encountered {e}')
+                await context.send(f"Sorry, I don't know how to use {e}")
+                return
+
             parts = context.message.text.split('\n', maxsplit=1)
             ops = parts[0].split(maxsplit=3)
             

@@ -80,7 +80,7 @@ async def test_one_process(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text)
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY + WEEKLY)
     reminders.store.delete_reminder.assert_not_called()
 
@@ -103,7 +103,7 @@ async def test_one_shot(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text)
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
     reminders.store.repost_reminder.assert_not_called()
     reminders.store.delete_reminder.assert_called_once_with(1)
     
@@ -129,8 +129,8 @@ async def test_two_process(reminders):
     
     reminders.store.get_due_reminders.assert_called_once()
     reminders.bot.send.assert_has_calls([
-        call(CHAT_ID_1, MESSAGE_1.text),
-        call(CHAT_ID_2, MESSAGE_2.text)
+        call(CHAT_ID_1, MESSAGE_1.text, text_mode='styled'),
+        call(CHAT_ID_2, MESSAGE_2.text, text_mode='styled')
     ])
     reminders.store.repost_reminder.assert_has_calls([
         call(1, TODAY + WEEKLY),
@@ -144,7 +144,7 @@ async def test_overlapping(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text)
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + WEEKLY)
 
 
@@ -154,7 +154,7 @@ async def test_prioritize_non_repeating(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_2.text)
+    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_2.text, text_mode='styled')
     reminders.store.repost_reminder.assert_not_called()
 
 

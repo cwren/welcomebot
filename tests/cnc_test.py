@@ -64,6 +64,7 @@ def context():
     context.message = SimpleNamespace()
     context.message.base64_attachments = []
     context.message.attachments_local_filenames = []
+    context.message.raw_message = '{"envelope": {"source": "01234567-89ab-cdef-0123-456789abcdef","sourceNumber": null,"sourceUuid": "01234567-89ab-cdef-0123-456789abcdef","sourceName": "somebody","sourceDevice":0,"timestamp":1783618000000,"serverReceivedTimestamp":1783618001000,"serverDeliveredTimestamp":1783618020000,"dataMessage": {"timestamp":1783618000000,"message": "","expiresInSeconds":604800,"isExpirationUpdate": false,"viewOnce": false,"groupInfo": null}},"account":"+12345678901"}'
     context.send = AsyncMock(return_value=3)
     return context
 
@@ -162,7 +163,7 @@ async def test_help(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamesp
 
     await cnc.handle(context)
 
-    context.send.assert_called_once_with(CNCCommand.HELP_MESSAGE.text)
+    context.send.assert_called_once_with(CNCCommand.HELP_MESSAGE.text, text_mode='styled')
 
 
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
