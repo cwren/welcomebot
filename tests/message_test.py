@@ -2,7 +2,7 @@ import json
 import pytest
 from types import SimpleNamespace
 
-from welcomebot import OverlappingStyleRegions, UnknownStyle, apply_styles
+from welcomebot import Message, OverlappingStyleRegions, UnknownStyle, apply_styles
 
 
 def make_style(type, start, length):
@@ -51,6 +51,38 @@ def message():
         "account":"+12345678901"
     }
     return message
+
+
+async def test_constructor():
+    attachments = [{'a': 'a'}]
+    m = Message('foo', attachments=attachments)
+    assert m.text == 'foo'
+    assert m.attachments == attachments
+    assert not m.mentions
+    assert m.has_attachments
+
+    m = Message('foo')
+    assert m.text == 'foo'
+    assert not m.attachments
+    assert not m.mentions
+    assert not m.has_attachments
+
+    m = Message('foo', has_attachments=True)
+    assert m.text == 'foo'
+    assert not m.attachments
+    assert not m.mentions
+    assert m.has_attachments
+
+async def test_mentions():
+    text = 'foo @12345678-1234-1234-1234-1234567890ab or @12345678-1234-1234-1234-1234567890ac'
+    mentions = [
+        {'start': 4, 'length': 1, 'author': '12345678-1234-1234-1234-1234567890ab'},
+        {'start': 9, 'length': 1, 'author': '12345678-1234-1234-1234-1234567890ac'},
+    ]
+    m = Message(text)
+    assert m.text == text
+    assert m.send_text == 'foo \uFFFC or \uFFFC'
+    assert m.mentions == mentions
 
 
 async def test_no_styles(message):

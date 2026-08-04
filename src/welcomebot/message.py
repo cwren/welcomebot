@@ -1,5 +1,8 @@
 import json
 from collections import Counter
+import re
+
+UUID_RE = r'@[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}'
 
 class Attachment:
     def __init__(self, filename, data=None):
@@ -21,8 +24,11 @@ class Attachment:
 class Message:
     def __init__(self, text, attachments=[], has_attachments=False):
         self.text = text
+        self.send_text = ''
         self.attachments = attachments
+        self.mentions = None
         self.has_attachments = len(attachments) > 0 if attachments else has_attachments
+        self.extract_mentions()
 
 
     def __str__(self):
@@ -34,22 +40,42 @@ class Message:
             return (self.text == other.text and
                     Counter(self.attachments) == Counter(other.attachments))
         return NotImplemented
+
+    
+    def extract_mentions(self):
+        mentions = []
+        matches = re.finditer(UUID_RE, self.text)
+        output = []
+        start = 0
+        n = 0
+        for match in matches:
+            output.append(self.text[start:match.start()])
+            n += len(self.text[start:match.start()])
+            start = match.end()
+            mentions.append({
+                'start' : n,
+                'length' : 1,
+                'author' : match.group()[1:], # should be 'uuid' imho
+            })
+            output.append('\uFFFC')
+            n += 1
+        output.append(self.text[start:])
+        self.send_text = ''.join(output)
+        if mentions:
+            self.mentions = mentions
+
+    def add_preamble(self, preamble):
+        return Message(preamble + self.text, attachments=self.attachments, has_attachments=self.has_attachments)
         
         
-    def send(self, vector, receiver=None, preamble=""):
+    def send(self, vector, receiver=None):
         attachment_data = [a.data for a in self.attachments] if self.attachments else None
         if receiver:
             # send via bot interface to a specific recipient
-            if attachment_data:
-                return vector.send(receiver, preamble + self.text, base64_attachments=attachment_data, text_mode="styled")
-            else:
-                return vector.send(receiver, preamble + self.text, text_mode="styled")
+            return vector.send(receiver, self.send_text, base64_attachments=attachment_data, text_mode="styled", mentions=self.mentions)
         else:
             # reply to a message context
-            if attachment_data:
-                return vector.send(preamble + self.text, base64_attachments=attachment_data, text_mode="styled")
-            else:
-                return vector.send(preamble + self.text, text_mode="styled")
+            return vector.send(self.send_text, base64_attachments=attachment_data, text_mode="styled", mentions=self.mentions)
             
 class OverlappingStyleRegions(Exception):
     pass

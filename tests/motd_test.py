@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 from signalbot import MessageType
 from welcomebot import Message, MotDCommand
 
+from .test_utils import sent_once
+
 USER_1 = "user1"
 USER_2 = "user2"
 MY_NUMBER = "+1234567890"
@@ -124,7 +126,7 @@ async def test_respond_to_mention(motd, context):
 
     await motd.handle(context)
 
-    context.send.assert_called_once_with(MOTD.text, text_mode='styled')
+    sent_once(context, text=MOTD.text)
 
 
 async def test_respond_with_default_tos(motd, context):
@@ -148,7 +150,7 @@ async def test_reject_dm_with_MOTD(motd, context):
 
     await motd.handle(context)
 
-    context.send.assert_called_once_with(MOTD.text, text_mode='styled')
+    sent_once(context, text=MOTD.text)
 
 
 async def test_reject_dm_generic(motd, context):
@@ -247,7 +249,7 @@ async def test_new_user(motd, context):
 
     await motd.handle(context)
 
-    context.send.assert_called_with(MOTD.text, text_mode='styled')
+    sent_once(context, text=MOTD.text)
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
     motd.store.retain_only.assert_called_once()
 

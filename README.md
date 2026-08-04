@@ -103,11 +103,21 @@ docker compose up
 - send `list_groups` to the bot in the CNC chat
 - set the welcome mesage for the group:
 ```
-set_motd 0
+set_motd ABCD
 hello and welcome to the chat.
 please adhere to group guidlines at
 https://codeforamerica.org/code-of-conduct/
 ```
+
+To mention someone in a message sent by the bot,
+use thier uuid instead, because signal won't let
+you author the message with a real mention unless 
+that person is in the CNC chat group:
+```
+set_tos
+please contact @12345678-1234-1234-1234-1234567890ab for help
+```
+
 ## Release Process
 
 ```

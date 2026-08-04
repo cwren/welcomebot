@@ -105,7 +105,7 @@ reminder interval is measured in days, delay of 0 is today
                     group_tag = ops[1]
 
                     attachments = self.extract_attachments(context.message)
-                    motd = Message(parts[1], attachments) if len(parts) == 2 else None
+                    motd = Message(parts[1], attachments=attachments) if len(parts) == 2 else None
 
                     if group_tag not in group_info:
                         reply = f'invalid group index: {group_tag}'
@@ -139,7 +139,7 @@ reminder interval is measured in days, delay of 0 is today
                     group = group_info[group_tag]
                     motd = self.store.get_motd(group['internal_id'])
                     if motd:
-                        await motd.send(context, preamble=f'motd for group {group_tag} ({group['name']}) is: \n')
+                        await motd.add_preamble(f'motd for group {group_tag} ({group['name']}) is: \n').send(context)
                     else:
                         reply = f'there is no motd for group {group_tag} ({group['name']})'
                         await context.send(reply)
@@ -169,7 +169,7 @@ reminder interval is measured in days, delay of 0 is today
                     self.logger.info("cnc processing set_tos request")
 
                     attachments = self.extract_attachments(context.message)
-                    tos = Message(parts[1], attachments) if len(parts) == 2 else None
+                    tos = Message(parts[1], attachments=attachments) if len(parts) == 2 else None
 
                     self.store.put_motd('TOS', tos)
                     if tos:
@@ -184,7 +184,7 @@ reminder interval is measured in days, delay of 0 is today
 
                     tos = self.store.get_motd('TOS')
                     if tos:
-                        await tos.send(context, preamble=f'tos is: \n')
+                        await tos.add_preamble('tos is: \n').send(context)
                     else:
                         await context.send('there is no tos for this bot')
                     return
@@ -250,7 +250,7 @@ reminder interval is measured in days, delay of 0 is today
                         group['internal_id'], 
                         self.cal.today() + delay, 
                         interval, 
-                        Message(parts[1], attachments)))
+                        Message(parts[1], attachments=attachments)))
                     if id:
                         reply = f'reminder set: {id}'
                     else:
@@ -273,7 +273,7 @@ reminder interval is measured in days, delay of 0 is today
                         return
                     reminder = self.store.get_reminder(id)
                     if reminder:
-                        await reminder.message.send(context, preamble=f'ID {reminder.id}:\n')
+                        await reminder.message.add_preamble(f'ID {reminder.id}:\n').send(context)
                     else:
                         await context.send(f'could not find reminder {id}')
                     return

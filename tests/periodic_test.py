@@ -4,7 +4,9 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call
 
-from welcomebot import Attachment, Calendar, Reminder, Reminders, Message
+from welcomebot import Attachment, Calendar, Reminder, Reminders, Message   
+
+from .test_utils import sent_once, sent_multiple
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187
@@ -15,6 +17,11 @@ CHAT_ID_2 = "chatIDTwo"
 MESSAGE_2 = Message("message two")
 MONTHLY = 30
 NO_REPEAT = 0
+
+AT = '12345678-1234-1234-1234-1234567890ab'
+MESSAGE_AT = Message(f'message one @{AT}')
+MESSAGE_AT_SENT = f'message one \uFFFC'
+MESSAGE_AT_START = 12
 
 ONE_REMINDER = [ Reminder(CHAT_ID_1, TODAY, WEEKLY, MESSAGE_1, 1) ]
 TWO_REMINDERS = [ 
@@ -80,7 +87,7 @@ async def test_one_process(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
+    sent_once(reminders.bot, receiver=CHAT_ID_1, text=MESSAGE_1.text)
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY + WEEKLY)
     reminders.store.delete_reminder.assert_not_called()
 
@@ -103,7 +110,7 @@ async def test_one_shot(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
+    sent_once(reminders.bot, receiver=CHAT_ID_1, text=MESSAGE_1.text)
     reminders.store.repost_reminder.assert_not_called()
     reminders.store.delete_reminder.assert_called_once_with(1)
     
@@ -116,11 +123,17 @@ async def test_rich_reminder(reminders):
 
     await reminders.process_queue()
     
-    assert len(reminders.bot.send.call_args.args) == 2
-    assert CHAT_ID_1 in reminders.bot.send.call_args.args[0]
-    assert MESSAGE_1.text in reminders.bot.send.call_args.args[1]
-    assert '0000' == reminders.bot.send.call_args.kwargs['base64_attachments'][0]
+    sent_once(reminders.bot, CHAT_ID_1, MESSAGE_1.text, base64_attachments=['0000'])
+    
 
+async def test_mention_reminder(reminders):
+    at = ONE_SHOT[0]
+    at.message = Message(MESSAGE_AT.text)
+    reminders.store.get_due_reminders = MagicMock(return_value=[at])
+
+    await reminders.process_queue()
+
+    sent_once(reminders.bot, CHAT_ID_1, MESSAGE_AT_SENT, mentions=[{ 'start': MESSAGE_AT_START, 'length': 1, 'author': AT }])
 
 async def test_two_process(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=TWO_REMINDERS)
@@ -128,13 +141,13 @@ async def test_two_process(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    reminders.bot.send.assert_has_calls([
-        call(CHAT_ID_1, MESSAGE_1.text, text_mode='styled'),
-        call(CHAT_ID_2, MESSAGE_2.text, text_mode='styled')
+    sent_multiple(reminders.bot, [
+        [CHAT_ID_1, MESSAGE_1.text],
+        [CHAT_ID_2, MESSAGE_2.text],
     ])
     reminders.store.repost_reminder.assert_has_calls([
         call(1, TODAY + WEEKLY),
-        call(2, TODAY + MONTHLY)
+        call(2, TODAY + MONTHLY),
     ])
 
 
@@ -144,7 +157,7 @@ async def test_overlapping(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_1.text, text_mode='styled')
+    sent_once(reminders.bot, receiver=CHAT_ID_1, text=MESSAGE_1.text)
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + WEEKLY)
 
 
@@ -154,7 +167,7 @@ async def test_prioritize_non_repeating(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    reminders.bot.send.assert_called_once_with(CHAT_ID_1, MESSAGE_2.text, text_mode='styled')
+    sent_once(reminders.bot, receiver=CHAT_ID_1, text=MESSAGE_2.text)
     reminders.store.repost_reminder.assert_not_called()
 
 
