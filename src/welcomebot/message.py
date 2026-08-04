@@ -2,7 +2,7 @@ import json
 from collections import Counter
 import re
 
-UUID_RE = r'@[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}'
+UUID_RE = r'@[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 
 class Attachment:
     def __init__(self, filename, data=None):

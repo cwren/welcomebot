@@ -74,10 +74,10 @@ async def test_constructor():
     assert m.has_attachments
 
 async def test_mentions():
-    text = 'foo @12345678-1234-1234-1234-1234567890ab or @12345678-1234-1234-1234-1234567890ac'
+    text = 'foo @12345678-1234-1234-1234-1234567890ab or @12345678-1234-1234-1234-1234567890AC'
     mentions = [
         {'start': 4, 'length': 1, 'author': '12345678-1234-1234-1234-1234567890ab'},
-        {'start': 9, 'length': 1, 'author': '12345678-1234-1234-1234-1234567890ac'},
+        {'start': 9, 'length': 1, 'author': '12345678-1234-1234-1234-1234567890AC'},
     ]
     m = Message(text)
     assert m.text == text
