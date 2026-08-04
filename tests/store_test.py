@@ -128,6 +128,7 @@ async def test_store_rich_motd(store, test_data):
     store.put_motd(SOCIAL_CHAT, message)
     assert store.get_motd(SOCIAL_CHAT) == message
     assert not store.get_motd(CNC_CHAT)
+    assert store.get_attachments(SOCIAL_CHAT)
 
 
 async def test_delete_motd(store):
@@ -135,6 +136,18 @@ async def test_delete_motd(store):
     store.put_motd(SOCIAL_CHAT, message)
     store.put_motd(SOCIAL_CHAT, None)
     assert not store.get_motd(SOCIAL_CHAT)
+
+
+async def test_delete_rich_motd(store, test_data):
+    attachments = [
+        Attachment(data=test_data.image1_b64, filename='image1.png'),
+        Attachment(data=test_data.image2_b64, filename='image2.png'),
+    ]
+    message = Message("This is a the Message of the Day", attachments=attachments)
+    store.put_motd(SOCIAL_CHAT, message)
+    store.put_motd(SOCIAL_CHAT, None)
+    assert not store.get_motd(SOCIAL_CHAT)
+    assert not store.get_attachments(SOCIAL_CHAT)
 
 
 async def test_store_motd_with_special_characters(store):
@@ -183,6 +196,7 @@ async def test_create_rich_reminder(store, test_data):
     assert rows[0].message.text == message.text
     
     assert not store.get_due_reminders()
+    assert store.get_attachments(id)
 
 
 async def test_get_reminder(store):
@@ -239,6 +253,20 @@ async def test_delete_reminder(store):
     assert id1 in remaining_ids
     assert id2 not in remaining_ids
     assert id3 in remaining_ids
+
+
+
+async def test_delete_rich_reminder(store, test_data):
+    attachments = [
+        Attachment(data=test_data.image1_b64, filename='image1.png'),
+    ]
+    message = Message("This is a rich reminder", attachments=attachments)
+    id = store.put_reminder(Reminder(SOCIAL_CHAT, TOMORROW, 7, message))
+    store.delete_reminder(id)
+
+    rows = store.get_all_reminders() 
+    assert len(rows) == 0
+    assert not store.get_attachments(id)
 
 
 async def test_delete_null_reminder(store):

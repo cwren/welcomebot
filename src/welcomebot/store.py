@@ -92,6 +92,24 @@ class BotStore():
         cur = self.con.cursor()
         res = cur.execute('SELECT version FROM database_info;')
         return res.fetchone()[0]
+    
+    #
+    # attachments
+    #
+
+    def get_attachments(self, message_id):
+        attachments = []
+        cur = self.con.cursor()
+        res = cur.execute('SELECT filename FROM attachment WHERE message_id = ?', (message_id, ))
+        rows = res.fetchall()
+        for filename in rows:
+            try:
+                with open(self.file_store / filename[0], "rb") as input:
+                    attachments.append(Attachment(filename[0], base64.b64encode(input.read()).decode('utf-8')))
+            except FileNotFoundError as e:
+                self.logger.warning(f'failed to load image file: {e}')
+        cur.close()
+        return attachments
 
 
     #
@@ -160,16 +178,9 @@ class BotStore():
         if not row:
             return None
         text = row[0]
-        attachments = []
         num_attachments = row[1]
-        if num_attachments > 0:
-            res = cur.execute('SELECT filename FROM attachment WHERE message_id = ?', (group, ))
-            rows = res.fetchall()
-            for filename in rows:
-                with open(self.file_store / filename[0], "rb") as input:
-                    attachments.append(Attachment(filename[0], base64.b64encode(input.read()).decode('utf-8')))
-                self.con.commit()
         cur.close()
+        attachments = self.get_attachments(group) if num_attachments > 0 else []
         return Message(text, attachments)
 
     def put_motd(self, group, motd):
@@ -228,17 +239,11 @@ class BotStore():
         interval = row[3]
         text = row[4]
         num_attachments = row[5]
-        attachments = []
-        if num_attachments > 0:
-            res = cur.execute('SELECT filename FROM attachment WHERE message_id = ?', (reminder_id, ))
-            rows = res.fetchall()
-            for filename in rows:
-                with open(self.file_store / filename[0], "rb") as input:
-                    attachments.append(Attachment(filename[0], base64.b64encode(input.read()).decode('utf-8')))
-                self.con.commit()
         cur.close()
-        return Reminder(group_id, next_day, interval, Message(text, attachments), id=reminder_id)
+        attachments = self.get_attachments(reminder_id) if num_attachments > 0 else []
+        return Reminder(group_id, next_day, interval, Message(text, attachments=attachments), id=reminder_id)
 
+   
     def get_all_reminders(self):
         cur = self.con.cursor()
         res = cur.execute('SELECT id, group_id, next, interval, message, num_attachments FROM reminder')
@@ -275,6 +280,12 @@ class BotStore():
         res = cur.execute('SELECT filename FROM attachment WHERE message_id = ?', (message_id, ))
         rows = res.fetchall()
         for filename in rows:
-            os.remove(self.file_store / filename[0])
+            try:
+                os.remove(self.file_store / filename[0])
+            except FileNotFoundError as e:
+                self.logger.warning(f'failed to remove image file: {e}')
+        
+        cur.execute('DELETE FROM attachment WHERE message_id = ?', (message_id, ))
+        self.con.commit()
         cur.close()
 
