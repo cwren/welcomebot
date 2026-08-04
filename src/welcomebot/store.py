@@ -70,6 +70,13 @@ class BotStore():
              );
         """)
         self.con.commit()
+        
+        cur.execute("""   
+             CREATE TABLE IF NOT EXISTS welcomes (
+                group_id TEXT
+             );
+        """)
+        self.con.commit()
 
         cur.close()
 
@@ -183,11 +190,13 @@ class BotStore():
         attachments = self.get_attachments(group) if num_attachments > 0 else []
         return Message(text, attachments)
 
+
     def put_motd(self, group, motd):
         cur = self.con.cursor()
         cur.execute('DELETE FROM motd WHERE group_id = ?', (group, ))
         self.cleanup_attachments(group)
         self.con.commit()
+        cur.close()
         if motd:
             cur = self.con.cursor()
             cur.execute("INSERT INTO motd (group_id, motd, num_attachments) VALUES(?, ?, ?)", 
@@ -202,6 +211,33 @@ class BotStore():
             cur.close()
             return motd
         return None
+
+    def schedule_welcome(self, group):
+        cur = self.con.cursor()
+        cur.execute("INSERT INTO welcomes (group_id) VALUES(?)", ( group, ) )
+        self.con.commit()
+        cur.close()
+
+    def get_outstanding_welcomes(self):
+        cur = self.con.cursor()
+        res = cur.execute("SELECT DISTINCT group_id FROM welcomes")
+        rows = res.fetchall()
+        groups = { row[0] for row in rows }
+        cur.close()
+        return groups
+
+    def remove_welcomes_for(self, group):
+        cur = self.con.cursor()
+        cur.execute('DELETE FROM welcomes WHERE group_id = ?', (group, ))
+        self.con.commit()
+        cur.close()
+
+    def get_motd_groups(self):
+        cur = self.con.cursor()
+        res = cur.execute('SELECT DISTINCT group_id FROM group_members INTERSECT SELECT DISTINCT group_id FROM motd')
+        rows = res.fetchall()
+        cur.close()
+        return { row[0] for row in rows }
 
     #
     # reminders

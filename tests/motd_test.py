@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from signalbot import MessageType
 from welcomebot import Message, MotDCommand
 
-from .test_utils import sent_once
+from .test_utils import assert_sent_once
 
 USER_1 = "user1"
 USER_2 = "user2"
@@ -65,6 +65,9 @@ def store():
     fake_store.retain_only = MagicMock()
     fake_store.get_motd = MagicMock(return_value=MOTD)
     fake_store.has_group = MagicMock(return_value=True)
+    fake_store.schedule_welcome = MagicMock()
+    fake_store.get_outstanding_welcomes = MagicMock()
+    fake_store.remove_welcomes_for = MagicMock()
     return fake_store
 
 @pytest.fixture
@@ -73,6 +76,7 @@ def bot():
     fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
     fake_bot.groups = GROUPS
     fake_bot.config = SimpleNamespace()
+    fake_bot.send = AsyncMock()
     fake_bot.config.phone_number = MY_NUMBER
     return fake_bot
 
@@ -82,8 +86,9 @@ def motd(bot, store):
     motd = MotDCommand(
         logger,
         CNC_CHAT_ID,
-        store)
-    motd.bot = bot
+        bot,
+        store,
+        instant=True)
     return motd
 
 
@@ -126,7 +131,7 @@ async def test_respond_to_mention(motd, context):
 
     await motd.handle(context)
 
-    sent_once(context, text=MOTD.text)
+    assert_sent_once(context, text=MOTD.text)
 
 
 async def test_respond_with_default_tos(motd, context):
@@ -150,7 +155,7 @@ async def test_reject_dm_with_MOTD(motd, context):
 
     await motd.handle(context)
 
-    sent_once(context, text=MOTD.text)
+    assert_sent_once(context, text=MOTD.text)
 
 
 async def test_reject_dm_generic(motd, context):
@@ -249,9 +254,43 @@ async def test_new_user(motd, context):
 
     await motd.handle(context)
 
-    sent_once(context, text=MOTD.text)
+    assert_sent_once(context, text=MOTD.text)
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
     motd.store.retain_only.assert_called_once()
+
+
+async def test_post_delayed_welcome(motd, context):
+    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
+    context.message.group = SOCIAL_CHAT_ID
+    context.message.source_uuid = USER_1
+    motd.instant = False
+
+    UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
+    NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
+    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
+    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+
+    await motd.handle(context)
+
+    context.send.assert_not_called()
+    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
+    motd.store.retain_only.assert_called_once()
+    motd.store.schedule_welcome.assert_called_with(SOCIAL_CHAT_ID)
+
+
+async def test_send_delayed_welcome(motd, context):
+    motd.instant = False
+    motd.store.get_outstanding_welcomes = MagicMock(return_value=[])
+    motd.store.get_motd_groups = MagicMock(return_value={SOCIAL_CHAT_ID})
+
+    UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
+    NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
+    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
+    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+
+    await motd.process_queue()
+
+    assert_sent_once(motd.bot, SOCIAL_CHAT_ID, text=MOTD.text)
 
 
 async def test_new_user_not_motd(motd, context):

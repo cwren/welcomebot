@@ -305,3 +305,59 @@ async def test_update_reminders(store):
     assert len(rows) == 1
     assert rows[0].id == id
     assert rows[0].next == YESTERDAY + 7
+
+
+async def test_create_welcome(store):
+    store.schedule_welcome(SOCIAL_CHAT)
+
+    groups = store.get_outstanding_welcomes()
+
+    assert len(groups) == 1
+    assert SOCIAL_CHAT in groups
+
+
+async def test_create_welcomes(store):
+    store.schedule_welcome(SOCIAL_CHAT)
+    store.schedule_welcome(CNC_CHAT)
+    store.schedule_welcome(SOCIAL_CHAT)
+
+    groups = store.get_outstanding_welcomes()
+    
+    assert len(groups) == 2
+    assert SOCIAL_CHAT in groups
+    assert CNC_CHAT in groups
+
+
+async def test_delete_welcomes(store):
+    store.schedule_welcome(SOCIAL_CHAT)
+    store.schedule_welcome(CNC_CHAT)
+    store.schedule_welcome(SOCIAL_CHAT)
+    store.remove_welcomes_for(SOCIAL_CHAT)
+
+    groups = store.get_outstanding_welcomes()
+    
+    assert len(groups) == 1
+    assert CNC_CHAT in groups
+
+    store.remove_welcomes_for(CNC_CHAT)
+
+    groups = store.get_outstanding_welcomes()
+    
+    assert not groups
+
+async def test_motd_groups(store):
+    store.put_members('a', [ USER_1, USER_2])
+    store.put_members('b', [ USER_1, USER_2])
+    store.put_members('c', [ USER_1, USER_2])
+    store.put_motd('b', MESSAGE)
+    store.put_motd('c', MESSAGE)
+    store.put_motd('d', MESSAGE)
+
+    groups = store.get_motd_groups()
+
+    assert len(groups) == 2
+    assert 'a' not in groups
+    assert 'b' in groups
+    assert 'c' in groups
+    assert 'd' not in groups
+

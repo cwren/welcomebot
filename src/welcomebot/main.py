@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import json
 import logging
 import os
 from pathlib import Path
@@ -17,8 +18,12 @@ def lubdub() -> None:
     logger.info("heartbeat")
 
 
-async def remind(reminders) -> None:
-    await reminders.process_queue()
+async def remind(reminder) -> None:
+    await reminder.process_queue()
+
+
+async def welcome(welcomer) -> None:
+    await welcomer.process_queue()
 
 
 def loop():
@@ -35,19 +40,33 @@ def loop():
 
     cnc_id = os.environ["WELCOME_CNC"]
     managers = re.split(r'[\s|,:]+', os.environ["WELCOME_MANAGER"])
+    instant_welcome = json.loads(os.environ.get('INSTANT_WELCOME', 'true'))
 
     bot_store = store.BotStore(logger,
                                db=config_directory / "bot_memory.db",
                                file_store=config_directory / "attachments")
-    reminders = periodic.Reminders(logger, bot, bot_store)
-    bot.register(cnc.CNCCommand(logger, managers, cnc_id, bot_store, reminders), groups=[cnc_id]) # monitor other groups
-    bot.register(motd.MotDCommand(logger, cnc_id, bot_store)) # monitor other groups
+    reminder = periodic.Reminders(logger, bot, bot_store)
+    welcomer = motd.MotDCommand(logger, cnc_id, bot, bot_store, instant=instant_welcome)
+    commander = cnc.CNCCommand(logger, managers, cnc_id, bot_store, reminder)
+
+    bot.register(commander, groups=[cnc_id]) # monitor other groups
+    bot.register(welcomer) # monitor other groups
+
     bot.scheduler.add_job(lubdub, trigger="interval", seconds=60, coalesce=True, max_instances=1)
     bot.scheduler.add_job(
         remind,
-        args=[reminders],
+        args=[reminder],
         trigger='cron',
-        hour=os.environ.get('REMINDER_TIMES', '13'),
+        hour=os.environ.get('REMINDER_TIMES', '13'), # once a day, US timezone friendly
+        misfire_grace_time=3600,
+        coalesce=True,
+        max_instances=1)
+    bot.scheduler.add_job(
+        welcome,
+        args=[welcomer],
+        trigger='cron',
+        hour=os.environ.get('WELCOME_TIMES', '*'), # once and hour on the hour
+        minute=30,
         misfire_grace_time=3600,
         coalesce=True,
         max_instances=1)

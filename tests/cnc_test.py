@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 from signalbot import MessageType
 from welcomebot import Attachment, Calendar, CNCCommand, Message, Reminder
 
-from .test_utils import sent_once
+from .test_utils import assert_sent_once
 
 USER = "user 1"
 MANAGER_1 = "user 2"
@@ -165,7 +165,7 @@ async def test_help(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamesp
 
     await cnc.handle(context)
 
-    sent_once(context, text=CNCCommand.HELP_MESSAGE.text)
+    assert_sent_once(context, text=CNCCommand.HELP_MESSAGE.text)
 
 
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):

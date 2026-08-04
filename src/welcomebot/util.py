@@ -1,8 +1,8 @@
-async def update_group (logger, bot, context, store):
+async def update_group (logger, bot, group, store):
     logger.info("updating group information")
-    post_group = bot.get_group(context.message.group)
+    post_group = bot.get_group(group)
     if post_group and "members" in post_group:
-        prev_members = store.get_members(context.message.group)
+        prev_members = store.get_members(group)
         new_member = False
         if prev_members:
             for member in post_group["members"]:
@@ -19,7 +19,7 @@ async def update_group (logger, bot, context, store):
             # TODO post introduction
 
         # update member cache
-        store.put_members(context.message.group, post_group["members"])
+        store.put_members(group, post_group["members"])
 
     logger.info("purging obsolete groups")
     valid_group_ids = [ g["internal_id"] for g in bot.groups ]

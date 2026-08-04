@@ -58,7 +58,7 @@ reminder interval is measured in days, delay of 0 is today
             return
         
         if not self.store.has_group(context.message.group):
-            await update_group(self.logger, self.bot, context, self.store)
+            await update_group(self.logger, self.bot, context.message.group, self.store)
 
         if context.message.type == MessageType.DATA_MESSAGE:
             self.logger.info("cnc processing data message")
