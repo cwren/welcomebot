@@ -1,140 +1,27 @@
 # Welcome Bot
 
-A bot that monitors signal chat groups and posts a message when people join
+A bot that performs some routine tasks useful for organizations operating on Signal. Primary intended use case is posting messages either periodically or when peple join a group to keep informational posts available that might otherwise slip past the disappearing message horizon, or be invisible to new members.
 
-## Getting Started 
+Primary Functions:
+- monitors chat groups and post a message when people join
+  - either immediately
+  - or periodically
+- post periodic reminders to the group
+  - code of conduct
+  - directories of other groups
+  - anything you can compose in a message to the bot
 
-**Note**: this is a work in progress. These setup instructions are very rough and will be evolving rapidly.
+Features:
+- supports attachments and mentions (sort of)
+- configure mostly by chatting with the bot
+- no LLMs were harmed, this is old-school
+- data stays in the hosting environment of your choice
+  - host privately
+  - docker compose formula for cloud hosting
 
-Create a local volume to hold the state of the signal-api and the welcomebot. This volume will be replaced by an encrypted volume in the cloud: 
-```
-docker volume create welcomebot_state
-```
-
-Also create a bridge nwork that you will need later:
-```
-docker network create --driver bridge signal
-```
-
-
-Register your account with signal-api, but link the volume in a little higher in the filesystem so we can use the volume for other state sotrage as well:
-```
-docker run --detach --name signal-api -p 8080:8080 \
-      --volume welcomebot_state:/home/.local \
-      --network signal \
-      -e 'MODE=json-rpc' bbernhard/signal-cli-rest-api
-```
-
-Open the registration QR code at http://localhost:8080/v1/qrcodelink?device_name=welcome-bot
-And scan it with the "link account" flow from the phone with the bot account.
-
-Note that the bot will have access to all the contacts and chats of the account
-you link it to. **You should not use your personal Signal account for this.** You 
-should get a separate phone number, create a Signal account with that number, 
-and then use that account only for the bot.
-
-Replace 12125551212 with the bot's phone number and execute these commands.
-```
-curl http://localhost:8080/v1/groups/+12125551212
-curl http://localhost:8080/v1/contacts/+112125551212
-```
-If you are using a fresh Signal account (you are, right?), then they should both
-return an empty result: `[]`.
-
-Send the bot account a message from the account you want it to trust as the
-management account. Accept that message as the bot using the phone. Then
-invite it to a group chat with a title you will remember, like "Welcomebot
-Control Room".
-
-Rerun those `curl` commands above and look for the new (only!) responses. 
-
-The value WELCOME_MANAGER will be the `uuid` of your entry in the response 
-to the contacts query. The value of WELCOME_CNC will be the `internal_id`
-in the response to the groups query.
-
-Now create .env with:
-```
-SIGNAL_SERVICE=localhost:8080
-PHONE_NUMBER=...
-WELCOME_MANAGER=...
-WELCOME_CNC=...
-```
-
-Then test locally with:
-```
-uv sync
-uv run pytest
-uv run python -m welcomebot
-```
-
-If you send the message "help" to the bot in the CNC channel, it
-should reply with a help message.
-
-## containerized!
-
-Now you should be able to copy your local state to a volume and run the bot in it's own container:
-```
-# copy state into the volume
-docker build -f copypaste.dockerfile -t copypaste .
-docker run -it -v ~/.local/share:/home/a -v wecomebot_state:/home/b copypaste
-
-# run the bot
-docker build -f docker/welcomebot.dockerfile \
-      --build-arg WELCOMEBOT_VERSION=0.1.8 \
-      -t welcomebot:v0.1.8 .
-docker run -d --name welcomebot --rm \
-     -v welcomebot_state:/home/.local \
-     --env-file .env \
-     --network container:signal-api \
-     welcomebot:v0.1.8
-```
-
-## compose 
-
-Stop the other containers and use `compose.yaml` config to bring the services up together:
-```
-docker compose up
-```
-
-## controlling the bot
-
-- send `help` to the bot in the CNC chat
-- invite the bot to a group you want to manage
-- send `list_groups` to the bot in the CNC chat
-- set the welcome mesage for the group:
-```
-set_motd ABCD
-hello and welcome to the chat.
-please adhere to group guidlines at
-https://codeforamerica.org/code-of-conduct/
-```
-
-To mention someone in a message sent by the bot,
-use thier uuid instead, because signal won't let
-you author the message with a real mention unless 
-that person is in the CNC chat group:
-```
-set_tos
-please contact @12345678-1234-1234-1234-1234567890ab for help
-```
-
-## Release Process
-
-```
-uv run pytest
-uv version --bump patch
-version=$(uv version --short)
-tag=v$version
-git commit -S -a -m "publishing $tag"
-git tag -m "publishing $tag" $tag
-git push github
-git push github tag $tag 
-```
+More information in [Getting Started](./docs/getting_started.md) and [Configuration](./docs/configuration.md)
 
 ## Primary Dependancies
 
 - https://github.com/bbernhard/signal-cli-rest-api
 - https://github.com/signalbot-org/signalbot
-
-
-
