@@ -43,7 +43,7 @@ GROUP_IDS = [ CNC_CHAT_ID, SOCIAL_CHAT_ID ]
 
 MOTD = Message("This is a message")
 
-logger = logging.getLogger("welcomebot")
+logger = logging.getLogger("motd_test")
 
 
 @pytest.fixture
@@ -70,6 +70,7 @@ def store():
     fake_store.remove_welcomes_for = MagicMock()
     return fake_store
 
+
 @pytest.fixture
 def bot():
     fake_bot = SimpleNamespace()
@@ -82,13 +83,30 @@ def bot():
 
 
 @pytest.fixture
-def motd(bot, store):
+def config():
+    config = SimpleNamespace()
+    config.logger = logger
+    config.welcome_cnc = CNC_CHAT_ID
+    config.instant_welcome = True
+    return config
+
+
+@pytest.fixture
+def motd(config, bot, store):
     motd = MotDCommand(
-        logger,
-        CNC_CHAT_ID,
+        config,
         bot,
-        store,
-        instant=True)
+        store)
+    return motd
+
+
+@pytest.fixture
+def delayed_motd(config, bot, store):
+    config.instant_welcome = False
+    motd = MotDCommand(
+        config,
+        bot,
+        store)
     return motd
 
 
@@ -259,23 +277,22 @@ async def test_new_user(motd, context):
     motd.store.retain_only.assert_called_once()
 
 
-async def test_post_delayed_welcome(motd, context):
+async def test_post_delayed_welcome(delayed_motd, context):
     context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
-    motd.instant = False
 
     UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
     UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
-    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    delayed_motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
 
-    await motd.handle(context)
+    await delayed_motd.handle(context)
 
     context.send.assert_not_called()
-    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
-    motd.store.retain_only.assert_called_once()
-    motd.store.schedule_welcome.assert_called_with(SOCIAL_CHAT_ID)
+    delayed_motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
+    delayed_motd.store.retain_only.assert_called_once()
+    delayed_motd.store.schedule_welcome.assert_called_with(SOCIAL_CHAT_ID)
 
 
 async def test_send_delayed_welcome(motd, context):

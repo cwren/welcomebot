@@ -42,7 +42,7 @@ OLD_REMINDER = [
     Reminder(CHAT_ID_1, TODAY - 30, 7, MESSAGE_1, 1),
 ]
 
-logger = logging.getLogger("welcomebot")
+logger = logging.getLogger("periodic_test")
 
 @pytest.fixture
 def cal():
@@ -69,8 +69,14 @@ def bot():
 
 
 @pytest.fixture
-def reminders(bot, store, cal):
-    return Reminders(logger, bot, store, cal)
+def config():
+    config = SimpleNamespace()
+    config.logger = logger
+    return config
+
+@pytest.fixture
+def reminders(config, bot, store, cal):
+    return Reminders(config, bot, store, cal)
 
 
 async def test_empty_process(reminders):

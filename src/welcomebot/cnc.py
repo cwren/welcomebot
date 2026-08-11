@@ -1,5 +1,6 @@
 from importlib.metadata import version
 import hashlib
+import os
 
 from signalbot import Command, Context, MessageType
 
@@ -32,10 +33,11 @@ tos is the message posted in response to DMs or mentions of the bot.
 reminder interval is measured in days, delay of 0 is today
 """)
 
-    def __init__(self, logger, managers, cnc, store, reminders, cal=Calendar()):
-        self.logger = logger
-        self.managers = managers
-        self.cnc = cnc
+    def __init__(self, config, store, reminders, cal=Calendar()):
+        self.config = config
+        self.logger = config.logger
+        self.managers = config.welcome_managers
+        self.cnc = config.welcome_cnc
         self.store = store
         self.reminders = reminders
         self.cal = cal
@@ -319,8 +321,9 @@ reminder interval is measured in days, delay of 0 is today
 
                 case 'version':
                     self.logger.info("cnc processing version request")
-                    reply = f'I am running welcomebot {version('welcomebot')}'
-                    await context.send(reply)
+                    replys = [f'I am running welcomebot {version('welcomebot')}']
+                    replys.extend(self.config.to_strings())
+                    await context.send("\n  ".join(replys))
                     return
 
 

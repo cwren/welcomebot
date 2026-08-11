@@ -1,4 +1,3 @@
-import base64
 from datetime import datetime, UTC
 import logging
 import pytest
@@ -20,7 +19,7 @@ TOMORROW = TODAY + 1
 YESTERDAY = TODAY - 1
 MESSAGE = Message('Please brush your teeth 🪥')
 
-logger = logging.getLogger("welcomebot")
+logger = logging.getLogger("store_test")
 
 
 @pytest.fixture

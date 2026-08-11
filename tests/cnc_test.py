@@ -51,7 +51,7 @@ REMINDER_1 = Reminder(CHAT_1_ID, TODAY, 7, REMINDER_1_MSG, id=1)
 REMINDER_2_DATE = '2026-05-31'
 REMINDER_2 = Reminder(CHAT_2_ID, TODAY + 5, 28, REMINDER_2_MSG, id=2)
 
-logger = logging.getLogger("welcomebot")
+logger = logging.getLogger("cnc_test")
 
 
 @pytest.fixture
@@ -100,11 +100,18 @@ def reminders():
     return fake_reminders
 
 @pytest.fixture
-def cnc(bot, store, reminders, cal):
+def config():
+    fake_config = SimpleNamespace()
+    fake_config.logger = logger
+    fake_config.welcome_managers = MANAGERS
+    fake_config.welcome_cnc = CNC_ID
+    fake_config.to_strings = MagicMock(return_value=['config values'])
+    return fake_config
+
+@pytest.fixture
+def cnc(config, bot, store, reminders, cal):
     cnc = CNCCommand(
-        logger,
-        MANAGERS,
-        CNC_ID,
+        config,
         store,
         reminders,
         cal)
@@ -822,6 +829,7 @@ async def test_version(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNam
     
     assert len(context.send.call_args.args) == 1
     assert version('welcomebot') in context.send.call_args.args[0]
+    assert 'config values' in context.send.call_args.args[0]
 
 
 async def test_today(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):

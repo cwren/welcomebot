@@ -4,12 +4,12 @@ from .message import Message
 from .util import update_group
 
 class MotDCommand(Command):
-    def __init__(self, logger, cnc, bot, store, instant=True):
-        self.logger = logger
-        self.cnc = cnc
+    def __init__(self, config, bot, store):
+        self.logger = config.logger
+        self.cnc = config.welcome_cnc
         self.bot = bot
         self.store = store
-        self.instant = instant
+        self.instant = config.instant_welcome
 
     async def handle(self, context: Context) -> None:
         group_refresh_needed = not self.store.has_group(context.message.group)

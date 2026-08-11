@@ -50,8 +50,8 @@ class Reminder():
 
     
 class Reminders():
-    def __init__(self, logger, bot, store, cal=Calendar()):
-        self.logger = logger
+    def __init__(self, config, bot, store, cal=Calendar()):
+        self.logger = config.logger
         self.bot = bot
         self.store = store
         self.cal = cal
