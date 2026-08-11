@@ -17,6 +17,8 @@ services:
       - LOGTAG=${LOGTAG}
       - LOGLEVEL=${LOGLEVEL}
       - REMINDER_TIMES=${REMINDER_TIMES}
+      - INSTANT_WELCOME=${INSTANT_WELCOME}
+      - WELCOMER_TIMES=${WELCOMER_TIMES}
     volumes:
       - state:/home/.local 
     networks:
