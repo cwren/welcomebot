@@ -4,7 +4,6 @@ from types import SimpleNamespace
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from signalbot import MessageType
 from welcomebot import Message, MotDCommand
 
 from .utils import assert_sent_once
@@ -111,137 +110,115 @@ def delayed_motd(config, bot, store):
 
 
 async def test_hello(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     context.send.assert_not_called()
 
 
 async def test_ignore_self_dm(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.source_number = MY_NUMBER
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     context.send.assert_not_called()
 
 
 async def test_ignore_read_receipt(motd, context):
-    context.message.type = MessageType.READ_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     context.send.assert_not_called()
 
 
 async def test_respond_to_mention(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.mentions = [ { 'number': MY_NUMBER } ]
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     assert_sent_once(context, text=MOTD.text)
 
 
 async def test_respond_with_default_tos(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.mentions = [ { 'number': MY_NUMBER } ]
     motd.store.get_motd = MagicMock(return_value=None)
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     assert len(context.send.call_args.args) == 1
     assert 'simple bot' in context.send.call_args.args[0]
 
 
 async def test_reject_dm_with_MOTD(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     assert_sent_once(context, text=MOTD.text)
 
 
 async def test_reject_dm_generic(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
     motd.store.get_motd = MagicMock(return_value=None)
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     assert len(context.send.call_args.args) == 1
     assert "group chats" in context.send.call_args.args[0]
 
 
-async def test_ignore_sync(motd, context):
-    context.message.type = MessageType.CONTACT_SYNC_MESSAGE
-    context.message.group = None
-    context.message.source_uuid = USER_1
-    motd.store.get_motd = MagicMock(return_value=None)
-
-    await motd.handle(context)
-    
-    context.send.assert_not_called()
-
-
 async def test_ignore_empty_dm(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER_1
     context.message.text = ""
     motd.store.get_motd = MagicMock(return_value=None)
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
     
     context.send.assert_not_called()
 
 
 async def test_ignore_missing_text(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = None
     context.message.source_uuid = USER_1
     context.message.text = None
     motd.store.get_motd = MagicMock(return_value=None)
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
     
     context.send.assert_not_called()
 
 
 async def test_ignore_cnc_data(motd, context):
-    context.message.type = MessageType.DATA_MESSAGE
     context.message.group = CNC_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     context.send.assert_not_called()
 
 
 async def test_ignore_cnc_update(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = CNC_CHAT_ID
     context.message.source_uuid = USER_1
     context.message.text = "Hello"
 
-    await motd.handle(context)
+    await motd.handle_data_message(context)
 
     # no side effects!
     context.send.assert_not_called()
@@ -251,17 +228,15 @@ async def test_ignore_cnc_update(motd, context):
 
 
 async def test_null_update(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     context.send.assert_not_called()
 
 
 async def test_new_user(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
@@ -270,7 +245,7 @@ async def test_new_user(motd, context):
     UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
     motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
 
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     assert_sent_once(context, text=MOTD.text)
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
@@ -278,7 +253,6 @@ async def test_new_user(motd, context):
 
 
 async def test_post_delayed_welcome(delayed_motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
@@ -287,7 +261,7 @@ async def test_post_delayed_welcome(delayed_motd, context):
     UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
     delayed_motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
 
-    await delayed_motd.handle(context)
+    await delayed_motd.handle_group_update(context)
 
     context.send.assert_not_called()
     delayed_motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
@@ -311,7 +285,6 @@ async def test_send_delayed_welcome(motd, context):
 
 
 async def test_new_user_not_motd(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
@@ -321,7 +294,7 @@ async def test_new_user_not_motd(motd, context):
     motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
     motd.store.get_motd = MagicMock(return_value=None)
 
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     context.send.assert_not_called()
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
@@ -329,14 +302,13 @@ async def test_new_user_not_motd(motd, context):
 
 
 async def test_removed_user(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
     OLD_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
     motd.store.get_members = MagicMock(return_value=OLD_LIST)
 
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     context.send.assert_not_called()
 
@@ -345,21 +317,19 @@ async def test_removed_user(motd, context):
 
 
 async def test_removed_group(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = SOCIAL_CHAT_ID
     context.message.source_uuid = USER_1
 
     motd.bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP])
     motd.bot.groups = [SOCIAL_GROUP]
     
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, SOCIAL_CHAT_MEMBERS)
     motd.store.retain_only.assert_called_with([SOCIAL_CHAT_ID])
 
 
 async def test_new_group(motd, context):
-    context.message.type = MessageType.GROUP_UPDATE_MESSAGE
     context.message.group = NEW_CHAT_ID
     context.message.source_uuid = USER_1
 
@@ -369,7 +339,7 @@ async def test_new_group(motd, context):
     motd.bot.groups = NEW_GROUPS
     motd.store.has_group = MagicMock(return_value=False)
     
-    await motd.handle(context)
+    await motd.handle_group_update(context)
 
     motd.store.put_members.assert_called_with(NEW_CHAT_ID, NEW_CHAT_MEMBERS)
     motd.store.retain_only.assert_called_with(NEW_GROUP_IDS)
