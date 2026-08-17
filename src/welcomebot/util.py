@@ -1,5 +1,6 @@
 async def update_group (logger, bot, group, store):
     logger.info("updating group information")
+    new_member = False
     post_group = bot.get_group(group)
     if post_group and "members" in post_group:
         prev_members = store.get_members(group)

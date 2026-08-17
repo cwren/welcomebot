@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, call
 
 from welcomebot import Attachment, Calendar, Reminder, Reminders, Message   
 
-from .test_utils import assert_sent_once, assert_sent_multiple
+from .utils import assert_sent_once, assert_sent_multiple
 
 DATE = [ 2026, 5, 26, 16, 47, 10, 1, UTC ]
 TODAY = 2461187

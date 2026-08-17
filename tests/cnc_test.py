@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 from signalbot import MessageType
 from welcomebot import Attachment, Calendar, CNCCommand, Message, Reminder
 
-from .test_utils import assert_sent_once
+from .utils import assert_sent_once
 
 USER = "user 1"
 MANAGER_1 = "user 2"

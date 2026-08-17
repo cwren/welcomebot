@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 from signalbot import MessageType
 from welcomebot import Message, MotDCommand
 
-from .test_utils import assert_sent_once
+from .utils import assert_sent_once
 
 USER_1 = "user1"
 USER_2 = "user2"
