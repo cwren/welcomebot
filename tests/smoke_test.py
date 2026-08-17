@@ -1,4 +1,5 @@
 import logging
+from os import environ
 from pathlib import Path
 
 from welcomebot import store
@@ -7,6 +8,11 @@ from welcomebot import motd
 from welcomebot import main
 from welcomebot import periodic
 from welcomebot import config
+
+environ['SIGNAL_SERVICE'] = 'https://127.0.0.1:12345'
+environ['PHONE_NUMBER'] = '+12345678901'
+environ['WELCOME_CNC'] = 'thespecialplace'
+environ['WELCOME_MANAGER'] = 'thespecialperson'
 
 bot={}
 logger = logging.getLogger("smoke")
