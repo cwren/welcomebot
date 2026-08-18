@@ -70,7 +70,7 @@ class Reminders():
                 recipients.add(reminder.group_id)
                 if reminder.message.has_attachments:
                     reminder = self.store.get_reminder(reminder.id)
-                promises.append(reminder.message.send(self.bot, reminder.group_id))
+                promises.append(reminder.message.send(self.bot.messages, reminder.group_id))
                 if reminder.interval:
                     today = self.cal.today()
                     next = today + reminder.interval - (today - reminder.next) % reminder.interval

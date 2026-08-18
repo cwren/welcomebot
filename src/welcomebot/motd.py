@@ -30,7 +30,7 @@ class MotDCommand(DataMessageHandler, GroupUpdateHandler):
                     await reply.send(context)
         else:
             self.logger.info("social processing data message")
-            mentions = [ m['number'] for m in context.message.mentions if m ]
+            mentions = [ m.number for m in context.message.mentions if m ]
             if self.bot.config.phone_number in mentions:
                 self.logger.info("social responding to a mention in a group")
                 reply = self.store.get_motd('TOS')
@@ -45,17 +45,17 @@ class MotDCommand(DataMessageHandler, GroupUpdateHandler):
         self.logger.info("social processing group update")
 
         self.logger.info("social checking group membership")
-        new_member = await update_group(self.logger, self.bot, context.message.group, self.store)
+        new_member = await update_group(self.logger, self.bot, context.message.group_info.group_id, self.store)
         if new_member:  
             if self.instant:
-                motd = self.store.get_motd(context.message.group)
+                motd = self.store.get_motd(context.message.group_info.group_id)
                 if motd:
                     self.logger.info("sent the message of the day")
                     await motd.send(context)
                 else:
                     self.logger.warning("no message of the day to send")
             else:
-                self.store.schedule_welcome(context.message.group)
+                self.store.schedule_welcome(context.message.group_info.group_id)
 
         return
 
@@ -73,7 +73,7 @@ class MotDCommand(DataMessageHandler, GroupUpdateHandler):
             motd = self.store.get_motd(group)
             if motd:
                 self.logger.info(f'sending delayed welcome to group {group}')
-                promises.append(motd.send(self.bot, group))
+                promises.append(motd.send(self.bot.messages, group))
             else:
                 self.logger.warning(f'no message of the day found for motd group {group}')
             self.store.remove_welcomes_for(group)

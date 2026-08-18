@@ -14,6 +14,7 @@ class CNCCommand(DataMessageHandler):
 list_groups: return enumerated known group names
 set_motd GROUP <newline> message
 get_motd GROUP
+run_welcome_queue
 set_tos <newline> message
 get_tos
 list_reminders
@@ -33,13 +34,14 @@ tos is the message posted in response to DMs or mentions of the bot.
 reminder interval is measured in days, delay of 0 is today
 """)
 
-    def __init__(self, config, store, reminders, cal=Calendar()):
+    def __init__(self, config, store, reminders, motd, cal=Calendar()):
         self.config = config
         self.logger = config.logger
         self.managers = config.welcome_managers
         self.cnc = config.welcome_cnc
         self.store = store
         self.reminders = reminders
+        self.motd = motd
         self.cal = cal
 
 
@@ -304,10 +306,17 @@ reminder interval is measured in days, delay of 0 is today
                 reply = 'reminder queue has been run'
                 await context.send(SendMessage(text=(reply)))
                 return
+            
+            case 'run_welcome_queue':
+                self.logger.info("cnc processing run_welcome_queue request")
+                await self.motd.process_queue()
+                reply = 'welcome queue has been run'
+                await context.send(SendMessage(text=(reply)))
+                return
 
             case 'who':
                 self.logger.info("cnc processing who request")
-                members = context.bot.get_group(group)['members']
+                members = context.bot.groups.get(group).members
                 reply = 'who is in this chat:\n'
                 reply += '\n'.join([ f'{m}' for m in members ])
                 await context.send(SendMessage(text=(reply)))
@@ -334,8 +343,9 @@ reminder interval is measured in days, delay of 0 is today
 
     def extract_attachments(self, message):
         attachments = []
-        for index in range(len(message.attachments)):
-            attachments.append(Attachment(
-                            filename=message.attachments[index].local_filename,
-                            data=message.attachments[index].base64_content))
+        if message.attachments:
+            for index in range(len(message.attachments)):
+                attachments.append(Attachment(
+                    filename=message.attachments[index].local_filename,
+                    data=message.attachments[index].base64_content))
         return attachments

@@ -3,6 +3,7 @@ from collections import Counter
 import re
 
 from signalbot import SendMessage
+import signalbot
 
 UUID_RE = r'@[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 
@@ -71,23 +72,23 @@ class Message:
         
         
     def send(self, vector, receiver=None):
-        attachment_data = [a.data for a in self.attachments] if self.attachments else None
+        attachments = [str(a.filename) for a in self.attachments] if self.attachments else None
         if receiver:
             # send via bot interface to a specific recipient
             return vector.send(
                 SendMessage(
                     text=self.send_text, 
-                    base64_attachments=attachment_data,
+                    attachments=attachments,
                     text_mode="styled",
                     mentions=self.mentions),
-                recipients=[receiver], 
+                recipient=receiver, 
             )
         else:
             # reply to a message context
             return vector.send(
                 SendMessage(
                     text=self.send_text, 
-                    base64_attachments=attachment_data,
+                    attachments=attachments,
                     text_mode="styled",
                     mentions=self.mentions),
             )
