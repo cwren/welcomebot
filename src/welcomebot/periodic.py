@@ -56,12 +56,11 @@ class Reminders():
         self.store = store
         self.cal = cal
     
-    def process_queue(self):
+    async def process_queue(self):
         self.logger.info('checking for reminders')
         reminders = self.store.get_due_reminders()
         reminders = sorted(reminders)
         recipients = set()
-        promises = []
         for reminder in reminders:
             if reminder.group_id in recipients:
                 self.logger.info(f'skipping reminder {reminder.id} in group {reminder.group_id}')
@@ -70,11 +69,11 @@ class Reminders():
                 recipients.add(reminder.group_id)
                 if reminder.message.has_attachments:
                     reminder = self.store.get_reminder(reminder.id)
-                promises.append(reminder.message.send(self.bot.messages, reminder.group_id))
+                await reminder.message.send(self.bot.messages, reminder.group_id)
                 if reminder.interval:
                     today = self.cal.today()
                     next = today + reminder.interval - (today - reminder.next) % reminder.interval
                     self.store.repost_reminder(reminder.id, next)
                 else:
                     self.store.delete_reminder(reminder.id)
-        return asyncio.gather(*promises)       
+        return       

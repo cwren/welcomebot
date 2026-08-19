@@ -112,7 +112,7 @@ class BotStore():
         for filename in rows:
             try:
                 with open(self.file_store / filename[0], "rb") as input:
-                    attachments.append(Attachment(filename[0], base64.b64encode(input.read()).decode('utf-8')))
+                    attachments.append(Attachment(self.file_store / filename[0], base64.b64encode(input.read()).decode('utf-8')))
             except FileNotFoundError as e:
                 self.logger.warning(f'failed to load image file: {e}')
         cur.close()

@@ -1,15 +1,14 @@
-import json
 from collections import Counter
 import re
 
 from signalbot import SendMessage
-import signalbot
 
 UUID_RE = r'@[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 
 class Attachment:
-    def __init__(self, filename, data=None):
+    def __init__(self, filename, dir=None, data=None):
         self.data = data
+        self.dir = dir
         self.filename = filename
 
 
@@ -72,7 +71,7 @@ class Message:
         
         
     def send(self, vector, receiver=None):
-        attachments = [str(a.filename) for a in self.attachments] if self.attachments else None
+        attachments = [ str(a.dir / a.filename) for a in self.attachments ] if self.attachments else None
         if receiver:
             # send via bot interface to a specific recipient
             return vector.send(
@@ -81,7 +80,7 @@ class Message:
                     attachments=attachments,
                     text_mode="styled",
                     mentions=self.mentions),
-                recipient=receiver, 
+                recipient=receiver,
             )
         else:
             # reply to a message context
