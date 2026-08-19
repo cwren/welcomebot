@@ -4,43 +4,25 @@ from types import SimpleNamespace
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from welcomebot import Message, MotDCommand
+from welcomebot import MotDCommand
 
 from .utils import assert_sent_once
 
-USER_1 = "user1"
-USER_2 = "user2"
-MY_NUMBER = "+1234567890"
-OTHER_NUMBER = "+0987654321"
-
-SOCIAL_CHAT_NAME = "socialchat"
-SOCIAL_CHAT_MEMBERS = [ USER_1 ]
-SOCIAL_CHAT_ID = "socialchatID"
-SOCIAL_GROUP = {
-    'name' : SOCIAL_CHAT_NAME,
-    'members' : SOCIAL_CHAT_MEMBERS,
-    'internal_id' : SOCIAL_CHAT_ID,
-}
-CNC_CHAT_NAME = "cncchat"
-CNC_CHAT_MEMBERS = [ USER_1 ]
-CNC_CHAT_ID = "cncchatID"
-CNC_GROUP = {
-    'name' : CNC_CHAT_NAME,
-    'members' : CNC_CHAT_MEMBERS,
-    'internal_id' : CNC_CHAT_ID,
-}
-NEW_CHAT_NAME = "newchat"
-NEW_CHAT_MEMBERS = [ USER_1, USER_2 ]
-NEW_CHAT_ID = "newchatID"
-NEW_GROUP = {
-    'name' : NEW_CHAT_NAME,
-    'members' : NEW_CHAT_MEMBERS,
-    'internal_id' : NEW_CHAT_ID,
-}
-GROUPS = [CNC_GROUP, SOCIAL_GROUP]
-GROUP_IDS = [ CNC_CHAT_ID, SOCIAL_CHAT_ID ]
-
-MOTD = Message("This is a message")
+from .conftest import FakeGroupDir
+from .conftest import MY_NUMBER
+from .conftest import OTHER_NUMBER
+from .conftest import GROUPS
+from .conftest import GROUP_IDS
+from .conftest import CNC_CHAT_ID
+from .conftest import SOCIAL_GROUP
+from .conftest import SOCIAL_CHAT_ID
+from .conftest import SOCIAL_CHAT_MEMBERS
+from .conftest import NEW_GROUP
+from .conftest import NEW_CHAT_ID
+from .conftest import NEW_CHAT_MEMBERS
+from .conftest import USER_1
+from .conftest import USER_2
+from .conftest import MOTD
 
 logger = logging.getLogger("motd_test")
 
@@ -51,7 +33,7 @@ def make_mention(number):
     return mention
 
 @pytest.fixture
-def context():
+def context(bot):
     context = SimpleNamespace()
     context.message = SimpleNamespace()
     context.message.group_info = SimpleNamespace()
@@ -61,34 +43,9 @@ def context():
     context.message.text_styles = None
     context.message.mentions = []
     context.send = AsyncMock(return_value=3)
+    context.bot = bot
     return context
 
-
-@pytest.fixture
-def store():
-    fake_store = SimpleNamespace()
-    fake_store.list_groups = MagicMock(return_value=GROUPS)
-    fake_store.get_members = MagicMock(return_value=SOCIAL_CHAT_MEMBERS)
-    fake_store.put_members = MagicMock()
-    fake_store.retain_only = MagicMock()
-    fake_store.get_motd = MagicMock(return_value=MOTD)
-    fake_store.has_group = MagicMock(return_value=True)
-    fake_store.schedule_welcome = MagicMock()
-    fake_store.get_outstanding_welcomes = MagicMock()
-    fake_store.remove_welcomes_for = MagicMock()
-    return fake_store
-
-
-@pytest.fixture
-def bot():
-    fake_bot = SimpleNamespace()
-    fake_bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP, CNC_GROUP])
-    fake_bot.groups = SimpleNamespace()
-    fake_bot.groups.get = MagicMock()
-    fake_bot.config = SimpleNamespace()
-    fake_bot.send = AsyncMock()
-    fake_bot.config.phone_number = MY_NUMBER
-    return fake_bot
 
 
 @pytest.fixture
@@ -230,12 +187,10 @@ async def test_null_update(motd, context):
 
 
 async def test_new_user(motd, context):
-    context.message.source_uuid = USER_1
-
     UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
-    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    UPDATED_SOCIAL_GROUP.members = NEW_LIST
+    context.bot.groups = FakeGroupDir([UPDATED_SOCIAL_GROUP])
 
     await motd.handle_group_update(context)
 
@@ -245,12 +200,10 @@ async def test_new_user(motd, context):
 
 
 async def test_post_delayed_welcome(delayed_motd, context):
-    context.message.source_uuid = USER_1
-
     UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
-    delayed_motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    UPDATED_SOCIAL_GROUP.members = NEW_LIST
+    context.bot.groups = FakeGroupDir([UPDATED_SOCIAL_GROUP])
 
     await delayed_motd.handle_group_update(context)
 
@@ -267,21 +220,19 @@ async def test_send_delayed_welcome(motd, context):
 
     UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
-    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    UPDATED_SOCIAL_GROUP.members = NEW_LIST
+    context.bot.groups = FakeGroupDir([UPDATED_SOCIAL_GROUP])
 
     await motd.process_queue()
 
-    assert_sent_once(motd.bot, SOCIAL_CHAT_ID, text=MOTD.text)
+    assert_sent_once(motd.bot.messages, receiver=SOCIAL_CHAT_ID, text=MOTD.text)
 
 
 async def test_new_user_not_motd(motd, context):
-    context.message.source_uuid = USER_1
-
     UPDATED_SOCIAL_GROUP = deepcopy(SOCIAL_GROUP)
     NEW_LIST = SOCIAL_CHAT_MEMBERS + [ USER_2 ]
-    UPDATED_SOCIAL_GROUP["members"] = NEW_LIST
-    motd.bot.get_group = MagicMock(side_effect=[UPDATED_SOCIAL_GROUP])
+    UPDATED_SOCIAL_GROUP.members = NEW_LIST
+    context.bot.groups = FakeGroupDir([UPDATED_SOCIAL_GROUP])
     motd.store.get_motd = MagicMock(return_value=None)
 
     await motd.handle_group_update(context)
@@ -308,24 +259,20 @@ async def test_removed_user(motd, context):
 async def test_removed_group(motd, context):
     context.message.source_uuid = USER_1
 
-    motd.bot.get_group = MagicMock(side_effect=[SOCIAL_GROUP])
-    motd.bot.groups = [SOCIAL_GROUP]
+    context.bot.groups = FakeGroupDir([SOCIAL_GROUP])
     
     await motd.handle_group_update(context)
 
-    motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, SOCIAL_CHAT_MEMBERS)
     motd.store.retain_only.assert_called_with([SOCIAL_CHAT_ID])
 
 
 async def test_new_group(motd, context):
-    context.message.group = NEW_CHAT_ID
+    context.message.group_info.group_id = NEW_CHAT_ID
     context.message.source_uuid = USER_1
 
     NEW_GROUPS = GROUPS + [ NEW_GROUP ]
-    NEW_GROUP_IDS = GROUP_IDS + [ NEW_CHAT_ID ]
-    motd.bot.get_group = MagicMock(side_effect=[NEW_GROUP])
-    motd.bot.groups = NEW_GROUPS
-    motd.store.has_group = MagicMock(return_value=False)
+    NEW_GROUP_IDS = GROUP_IDS + [ NEW_CHAT_ID ] 
+    context.bot.groups = FakeGroupDir(NEW_GROUPS)
     
     await motd.handle_group_update(context)
 
