@@ -4,7 +4,7 @@ from signalbot import SendMessage
 
 def assert_sent_once(vector, receiver=None, text=None, mentions=None, attachments=None):
     if receiver:
-        vector.send.assert_called_once_with(SendMessage(text=text, text_mode='styled', mentions=mentions, attachments=attachments, recipient=receiver))
+        vector.send.assert_called_once_with(SendMessage(text=text, text_mode='styled', mentions=mentions, attachments=attachments), recipient=receiver)
     else:
         vector.send.assert_called_once_with(SendMessage(text=text, text_mode='styled', mentions=mentions, attachments=attachments))
 
