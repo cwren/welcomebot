@@ -1,6 +1,7 @@
 import base64
 import os
 from pathlib import Path
+import secrets
 import sqlite3
 
 from .message import Attachment, Message
@@ -112,12 +113,20 @@ class BotStore():
         for filename in rows:
             try:
                 with open(self.file_store / filename[0], "rb") as input:
-                    attachments.append(Attachment(self.file_store / filename[0], base64.b64encode(input.read()).decode('utf-8')))
+                    attachments.append(Attachment(filename[0], dir=self.file_store, data=base64.b64encode(input.read()).decode('utf-8')))
             except FileNotFoundError as e:
                 self.logger.warning(f'failed to load image file: {e}')
         cur.close()
         return attachments
 
+    def save_attachments(self, cur, owner, message):
+        for attachment in message.attachments:
+            attachment.filename = f'{secrets.token_urlsafe(10)}-{attachment.filename}'
+            with open(self.file_store / attachment.filename, "wb") as output:
+                output.write(base64.b64decode(attachment.data))
+            cur.execute("INSERT INTO attachment (message_id, filename) VALUES(?, ?)", 
+                            (owner, attachment.filename))
+            self.con.commit()
 
     #
     # groups
@@ -202,12 +211,7 @@ class BotStore():
             cur.execute("INSERT INTO motd (group_id, motd, num_attachments) VALUES(?, ?, ?)", 
                         ( group, motd.text, len(motd.attachments)) )
             self.con.commit()
-            for attachment in motd.attachments:
-                with open(self.file_store / attachment.filename, "wb") as output:
-                    output.write(base64.b64decode(attachment.data))
-                cur.execute("INSERT INTO attachment (message_id, filename) VALUES(?, ?)", 
-                            (group, attachment.filename))
-                self.con.commit()
+            self.save_attachments(cur, group, motd)
             cur.close()
             return motd
         return None
@@ -254,12 +258,7 @@ class BotStore():
         ) )
         reminder_id = cur.lastrowid
         self.con.commit()
-        for attachment in reminder.message.attachments:
-            with open(self.file_store / attachment.filename, "wb") as output:
-                output.write(base64.b64decode(attachment.data))
-            cur.execute("INSERT INTO attachment (message_id, filename) VALUES(?, ?)", 
-                        (reminder_id, attachment.filename))
-            self.con.commit()
+        self.save_attachments(cur, reminder_id, reminder.message)
         cur.close()
         return reminder_id
 

@@ -19,6 +19,6 @@ logger = logging.getLogger("smoke")
 my_config=config.Configuration(logger)
 bot_store = store.BotStore(logger, db=":memory:", file_store= Path("/tmp") / "attachments")
 reminders = periodic.Reminders(my_config, bot, bot_store)
-cnc.CNCCommand(my_config, bot, bot_store, reminders)
-motd.MotDCommand(my_config, bot, bot_store)
+welcomer = motd.MotDCommand(my_config, bot, bot_store)
+cnc.CNCCommand(my_config, bot, bot_store, reminders, welcomer)
 assert main.main
