@@ -1,4 +1,5 @@
 from collections import Counter
+from pathlib import Path
 import re
 
 from signalbot import SendMessage
@@ -9,7 +10,7 @@ class Attachment:
     def __init__(self, filename, dir=None, data=None):
         self.data = data
         self.dir = dir
-        self.filename = filename
+        self.filename = Path(filename)
 
 
     def __eq__(self, other):

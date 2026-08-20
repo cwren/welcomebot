@@ -39,7 +39,6 @@ def context(bot):
     context.message.group_info = SimpleNamespace()
     context.message.group_info.group_id = SOCIAL_CHAT_ID
     context.message.source_number = OTHER_NUMBER
-    context.message.attachments_local_filenames = []
     context.message.text_styles = None
     context.message.mentions = []
     context.send = AsyncMock(return_value=3)

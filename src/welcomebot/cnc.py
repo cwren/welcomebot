@@ -190,7 +190,7 @@ reminder interval is measured in days, delay of 0 is today
                 if tos:
                     await tos.add_preamble('tos is: \n').send(context)
                 else:
-                    await context.send(SendMessage(text=(reply)))
+                    await context.send(SendMessage(text='there is no tos'))
                 return
 
             case 'list_reminders':
