@@ -15,7 +15,7 @@ class Attachment:
 
     def __eq__(self, other):
         if isinstance(other, Attachment):
-            return (self.filename == other.filename and
+            return (str(self.filename) == str(other.filename) and
                     self.data == other.data)
         return NotImplemented
     
