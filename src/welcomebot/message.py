@@ -9,7 +9,7 @@ UUID_RE = r'@[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-f
 class Attachment:
     def __init__(self, filename, dir=None, data=None):
         self.data = data
-        self.dir = dir
+        self.dir = Path(dir) if dir else None
         self.filename = Path(filename)
 
 

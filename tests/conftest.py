@@ -98,5 +98,7 @@ def store(scope="function", autouse=True):
     fake_store.put_reminder = MagicMock()
     fake_store.get_reminder = MagicMock()
     fake_store.get_all_reminders = MagicMock()
+    fake_store.get_due_reminders = MagicMock(return_value=[])
+    fake_store.repost_reminder = MagicMock()
     fake_store.delete_reminder = MagicMock()
     return fake_store
