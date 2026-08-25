@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from welcomebot import MotDCommand
 
-from .utils import assert_sent_once
+from .utils import FakeCall, assert_sent_once
 
 from .conftest import FakeGroupDir
 from .conftest import MY_NUMBER
@@ -102,7 +102,7 @@ async def test_respond_to_mention(motd, context):
 
     await motd.handle_data_message(context)
 
-    assert_sent_once(context, text=MOTD.text)
+    assert_sent_once(context, FakeCall(text=MOTD.text))
 
 
 async def test_respond_with_default_tos(motd, context):
@@ -121,7 +121,7 @@ async def test_reject_dm_with_MOTD(motd, context):
 
     await motd.handle_data_message(context)
 
-    assert_sent_once(context, text=MOTD.text)
+    assert_sent_once(context, FakeCall(text=MOTD.text))
 
 
 async def test_reject_dm_generic(motd, context):
@@ -193,7 +193,7 @@ async def test_new_user(motd, context):
 
     await motd.handle_group_update(context)
 
-    assert_sent_once(context, text=MOTD.text)
+    assert_sent_once(context, FakeCall(text=MOTD.text))
     motd.store.put_members.assert_called_with(SOCIAL_CHAT_ID, NEW_LIST)
     motd.store.retain_only.assert_called_once()
 
@@ -224,7 +224,7 @@ async def test_send_delayed_welcome(motd, context):
 
     await motd.process_queue()
 
-    assert_sent_once(motd.bot.messages, receiver=SOCIAL_CHAT_ID, text=MOTD.text)
+    assert_sent_once(motd.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MOTD.text))
 
 
 async def test_new_user_not_motd(motd, context):

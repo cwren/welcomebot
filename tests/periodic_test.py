@@ -73,7 +73,7 @@ async def test_one_process(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    assert_sent_once(reminders.bot.messages, receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text)
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text))
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY + WEEKLY)
     reminders.store.delete_reminder.assert_not_called()
 
@@ -96,7 +96,7 @@ async def test_one_shot(reminders):
     await reminders.process_queue()
     
     reminders.store.get_due_reminders.assert_called_once()
-    assert_sent_once(reminders.bot.messages, receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text)
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text))
     reminders.store.repost_reminder.assert_not_called()
     reminders.store.delete_reminder.assert_called_once_with(1)
     
@@ -109,7 +109,7 @@ async def test_rich_reminder(reminders):
 
     await reminders.process_queue()
     
-    assert_sent_once(reminders.bot.messages, SOCIAL_CHAT_ID, MESSAGE_1.text, attachments=['foo/bar'])
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text, attachments=['foo/bar']))
     
 
 async def test_mention_reminder(reminders):
@@ -119,7 +119,7 @@ async def test_mention_reminder(reminders):
 
     await reminders.process_queue()
 
-    assert_sent_once(reminders.bot.messages, SOCIAL_CHAT_ID, MESSAGE_AT_SENT, mentions=[{ 'start': MESSAGE_AT_START, 'length': 1, 'author': AT }])
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_AT_SENT, mentions=[{ 'start': MESSAGE_AT_START, 'length': 1, 'author': AT }]))
 
 async def test_two_process(reminders):
     reminders.store.get_due_reminders = MagicMock(return_value=TWO_REMINDERS)
@@ -143,7 +143,7 @@ async def test_overlapping(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    assert_sent_once(reminders.bot.messages, receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text)
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_1.text))
     reminders.store.repost_reminder.assert_called_once_with(1, TODAY - 1 + WEEKLY)
 
 
@@ -153,7 +153,7 @@ async def test_prioritize_non_repeating(reminders):
     await reminders.process_queue()
 
     # the second message to the same group should be delayed to tomorrow
-    assert_sent_once(reminders.bot.messages, receiver=SOCIAL_CHAT_ID, text=MESSAGE_2.text)
+    assert_sent_once(reminders.bot.messages, FakeCall(receiver=SOCIAL_CHAT_ID, text=MESSAGE_2.text))
     reminders.store.repost_reminder.assert_not_called()
 
 

@@ -7,9 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 from welcomebot import Attachment, CNCCommand, Message, Reminder
 
-from .utils import assert_sent_once
+from .utils import FakeCall, assert_sent_once
 
-from .conftest import FakeGroupDir
 from .conftest import GROUPS
 from .conftest import CNC_CHAT_NAME
 from .conftest import CNC_CHAT_ID
@@ -143,7 +142,7 @@ async def test_help(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamesp
 
     await cnc.handle_data_message(context)
 
-    assert_sent_once(context, text=CNCCommand.HELP_MESSAGE.text)
+    assert_sent_once(context, FakeCall(text=CNCCommand.HELP_MESSAGE.text))
 
 
 async def test_list(cnc: CNCCommand[logging.Logger, list[str], str, SimpleNamespace], context: SimpleNamespace):
