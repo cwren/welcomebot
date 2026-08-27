@@ -30,7 +30,10 @@ class MotDCommand(DataMessageHandler, GroupUpdateHandler):
                     await reply.send(context)
         else:
             self.logger.info("social processing data message")
-            mentions = [ m.number for m in context.message.mentions if m ]
+            if context.message.mentions:
+                mentions = [ m.number for m in context.message.mentions if m ]
+            else:
+                mentions = ()
             if self.bot.config.phone_number in mentions:
                 self.logger.info("social responding to a mention in a group")
                 reply = self.store.get_motd('TOS')

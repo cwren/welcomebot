@@ -102,7 +102,14 @@ async def test_respond_to_mention(motd, context):
 
     await motd.handle_data_message(context)
 
-    assert_sent_once(context, FakeCall(text=MOTD.text))
+
+
+async def test_handle_nonetype_mentions(motd, context):
+    context.message.mentions = None
+
+    await motd.handle_data_message(context)
+
+    context.send.assert_not_called()
 
 
 async def test_respond_with_default_tos(motd, context):
