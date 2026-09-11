@@ -668,7 +668,7 @@ dev = [
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "juliandate", specifier = ">=1.0.5" },
-    { name = "signalbot", specifier = ">=0.25.0" },
+    { name = "signalbot", specifier = ">=2.0.0" },
 ]
 
 [package.metadata.requires-dev]
