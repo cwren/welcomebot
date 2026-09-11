@@ -1,18 +1,21 @@
-import json
 from collections import Counter
+from pathlib import Path
 import re
+
+from signalbot import SendMessage
 
 UUID_RE = r'@[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 
 class Attachment:
-    def __init__(self, filename, data=None):
+    def __init__(self, filename, dir=None, data=None):
         self.data = data
-        self.filename = filename
+        self.dir = Path(dir) if dir else None
+        self.filename = Path(filename)
 
 
     def __eq__(self, other):
         if isinstance(other, Attachment):
-            return (self.filename == other.filename and
+            return (str(self.filename) == str(other.filename) and
                     self.data == other.data)
         return NotImplemented
     
@@ -69,13 +72,26 @@ class Message:
         
         
     def send(self, vector, receiver=None):
-        attachment_data = [a.data for a in self.attachments] if self.attachments else None
+        attachments = [ str(a.dir / a.filename) for a in self.attachments ] if self.attachments else None
         if receiver:
             # send via bot interface to a specific recipient
-            return vector.send(receiver, self.send_text, base64_attachments=attachment_data, text_mode="styled", mentions=self.mentions)
+            return vector.send(
+                SendMessage(
+                    text=self.send_text, 
+                    attachments=attachments,
+                    text_mode="styled",
+                    mentions=self.mentions),
+                recipient=receiver,
+            )
         else:
             # reply to a message context
-            return vector.send(self.send_text, base64_attachments=attachment_data, text_mode="styled", mentions=self.mentions)
+            return vector.send(
+                SendMessage(
+                    text=self.send_text, 
+                    attachments=attachments,
+                    text_mode="styled",
+                    mentions=self.mentions),
+            )
             
 class OverlappingStyleRegions(Exception):
     pass
@@ -92,28 +108,27 @@ DELIMITERS = {
 }
 
 def apply_styles(message):
-    raw = json.loads(message.raw_message)
-    if not 'textStyles' in raw['envelope']['dataMessage']:
+    if not message.text_styles:
         return
         
-    styles = sorted(raw['envelope']['dataMessage']['textStyles'], key=lambda x: x['start'])
+    styles = sorted(message.text_styles, key=lambda x: x.start)
     for i in range(1, len(styles)):
-        previous_end = styles[i - 1]['start'] + styles[i - 1]['length'] - 1
-        if styles[i]['start'] <= previous_end:
+        previous_end = styles[i - 1].start + styles[i - 1].length - 1
+        if styles[i].start <= previous_end:
             raise OverlappingStyleRegions()
     text = []
-    input = raw['envelope']['dataMessage']['message']
+    input = message.text
     ptr = 0
     for style in styles:
-        if style['style'] not in DELIMITERS:
-            raise UnknownStyle(f'Unrecognized style {style['style']}')
-        start = style['start']
-        end = style['start'] + style['length']
+        if style.style not in DELIMITERS:
+            raise UnknownStyle(f'Unrecognized style {style.style}')
+        start = style.start
+        end = style.start + style.length
         if start >= ptr and start < len(input):
             text.append(input[ptr:start])
-            text.append(DELIMITERS[style['style']])
+            text.append(DELIMITERS[style.style])
             text.append(input[start:end])
-            text.append(DELIMITERS[style['style']])
+            text.append(DELIMITERS[style.style])
         ptr = end
 
     if not text:

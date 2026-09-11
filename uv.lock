@@ -91,6 +91,18 @@ wheels = [
 ]
 
 [[package]]
+name = "anyio"
+version = "4.14.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "idna" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f", size = 260176, upload-time = "2026-07-12T20:29:07.082Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494", size = 125813, upload-time = "2026-07-12T20:29:05.763Z" },
+]
+
+[[package]]
 name = "apscheduler"
 version = "3.11.3"
 source = { registry = "https://pypi.org/simple" }
@@ -527,10 +539,11 @@ wheels = [
 
 [[package]]
 name = "signalbot"
-version = "1.2.5"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "anyio" },
     { name = "apscheduler" },
     { name = "packaging" },
     { name = "phonenumbers" },
@@ -538,9 +551,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/5c/cb558bf71a0dcc49f19c8df13ef6757d2d11f9da0f1f1e46b1f25179b123/signalbot-1.2.5.tar.gz", hash = "sha256:0e7522168614661bff21a69e79e56cc9f538146e0f97be483ffee33c5ad16949", size = 20658, upload-time = "2026-08-10T22:03:41.379Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e3/4e/5041f99f08405423ad491e0f63ac7935519d35b3d24b19733b85d494145d/signalbot-2.0.0.tar.gz", hash = "sha256:b145dce8f660544ee014e291b031d0c759e58bf8b4576eba4496fbe431648d17", size = 61914, upload-time = "2026-08-10T22:13:38.048Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/3e/4b8bf32a878e03d7689c73f84fd8069b706cd331c2bf7128aabe87c88da8/signalbot-1.2.5-py3-none-any.whl", hash = "sha256:b01cc44c9de4970e2cca9e11fbc7f99af8a412392c9e2234065d3880ad7357f9", size = 25989, upload-time = "2026-08-10T22:03:40.245Z" },
+    { url = "https://files.pythonhosted.org/packages/67/2f/f976374cd935cedd2da11e567212fd69084d17ebdb07ae0c52e82afe1e79/signalbot-2.0.0-py3-none-any.whl", hash = "sha256:f1f136633513882cf05c98a443ce6b55aee9a7f9fc80dab7bfdd681bc977a6f8", size = 133237, upload-time = "2026-08-10T22:13:36.95Z" },
 ]
 
 [[package]]
@@ -655,7 +668,7 @@ dev = [
 requires-dist = [
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "juliandate", specifier = ">=1.0.5" },
-    { name = "signalbot", specifier = ">=0.25.0,<2.0.0" },
+    { name = "signalbot", specifier = ">=2.0.0" },
 ]
 
 [package.metadata.requires-dev]

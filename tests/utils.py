@@ -1,13 +1,25 @@
 from unittest.mock import call
 
-def assert_sent_once(vector, receiver=None, text=None, mentions=None, base64_attachments=None):
-    if receiver:
-        vector.send.assert_called_once_with(receiver, text, text_mode='styled', mentions=mentions, base64_attachments=base64_attachments)
-    else:
-        vector.send.assert_called_once_with(text, text_mode='styled', mentions=mentions, base64_attachments=base64_attachments)
+from signalbot import SendMessage
 
-def assert_sent_multiple(vector, arglists):
+class FakeCall():
+    def __init__(self, receiver=None, text=None, mentions=None, attachments=None):
+        self.receiver = receiver
+        self.text = text
+        self.mentions = mentions
+        self.attachments = attachments
+
+def assert_sent_once(vector, fakecall):
+    if fakecall.receiver:
+        vector.send.assert_called_once_with(SendMessage(text=fakecall.text, text_mode='styled', mentions=fakecall.mentions, attachments=fakecall.attachments), recipient=fakecall.receiver)
+    else:
+        vector.send.assert_called_once_with(SendMessage(text=fakecall.text, text_mode='styled', mentions=fakecall.mentions, attachments=fakecall.attachments))
+
+def assert_sent_multiple(vector, fakecalls):
     calls = []
-    for arglist in arglists:
-        calls.append(call(*arglist, text_mode='styled', mentions=None, base64_attachments=None))
-    vector.send.assert_has_calls(calls)
+    for fakecall in fakecalls:
+        if fakecall.receiver:
+            calls.append(call(SendMessage(text=fakecall.text, text_mode='styled', mentions=fakecall.mentions, attachments=fakecall.attachments), recipient=fakecall.receiver))
+        else:
+            calls.append(call(SendMessage(text=fakecall.text, text_mode='styled', mentions=fakecall.mentions, attachments=fakecall.attachments)))
+    vector.send.assert_has_calls(calls, any_order=True)

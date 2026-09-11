@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import logging
 import os
 from pathlib import Path
-from signalbot import SignalBot, Config, SQLiteConfig, enable_console_logging
+from signalbot import SignalBot, Config, SQLiteConfig
 
 from . import cnc
 from . import motd
@@ -33,8 +33,8 @@ def loop(my_config):
             signal_service=my_config.signal_service,
             phone_number=my_config.phone_number,
             storage=SQLiteConfig(
-                sqlite_db=config_directory / 'signalbot_internal_state.db',
-            )
+                db=config_directory / 'signalbot_internal_state.db',
+            ),
         )
     )
 
@@ -43,7 +43,7 @@ def loop(my_config):
                                file_store=config_directory / "attachments")
     reminder = periodic.Reminders(my_config, bot, bot_store)
     welcomer = motd.MotDCommand(my_config, bot, bot_store)
-    commander = cnc.CNCCommand(my_config, bot_store, reminder)
+    commander = cnc.CNCCommand(my_config, bot_store, reminder, welcomer)
 
     bot.register(commander, groups=[my_config.welcome_cnc]) # monitor other groups
     bot.register(welcomer) # monitor other groups
@@ -73,7 +73,6 @@ def loop(my_config):
 
 def main():
     # signalbot logs
-    enable_console_logging(logging.WARNING)
     my_config = config.Configuration(logger)
     # welcomebot logs
     
